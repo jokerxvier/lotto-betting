@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Admin\DrawResultController as AdminDrawResultController;
 use App\Http\Controllers\Admin\WalletController as AdminWalletController;
 use App\Http\Controllers\BetController;
 use App\Http\Controllers\CartController;
@@ -47,6 +48,15 @@ Route::middleware(['auth', EnsureAccountSetupIsComplete::class, EnsureAdmin::cla
 
         Route::post('wallets/top-up', [AdminWalletController::class, 'topUp'])
             ->name('wallets.top-up');
+
+        Route::get('draws', [AdminDrawResultController::class, 'index'])
+            ->name('draws.index');
+
+        Route::get('draws/{draw}/result', [AdminDrawResultController::class, 'create'])
+            ->name('draws.result.create');
+
+        Route::post('draws/{draw}/result', [AdminDrawResultController::class, 'store'])
+            ->name('draws.result.store');
     });
 
 require __DIR__.'/auth.php';

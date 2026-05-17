@@ -48,6 +48,12 @@ class HandleInertiaRequests extends Middleware
                     'wallet_code' => $user->wallet_code,
                 ] : null,
             ],
+            // Surface session flash to Inertia pages — admin/draws and other
+            // pages render `props.flash?.status` and `?.error` post-redirect.
+            'flash' => [
+                'status' => fn () => $request->session()->get('status'),
+                'error' => fn () => $request->session()->get('error'),
+            ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];
     }
