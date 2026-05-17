@@ -1,8 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Factories;
 
 use App\Models\User;
+use App\Models\Wallet;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -56,5 +59,15 @@ class UserFactory extends Factory
             'two_factor_recovery_codes' => encrypt(json_encode(['recovery-code-1'])),
             'two_factor_confirmed_at' => now(),
         ]);
+    }
+
+    /**
+     * Persist a paired wallet after the user is created.
+     */
+    public function withWallet(string $balance = '0.00'): static
+    {
+        return $this->afterCreating(function (User $user) use ($balance): void {
+            Wallet::factory()->for($user)->state(['balance' => $balance])->create();
+        });
     }
 }
