@@ -27,6 +27,17 @@ class WalletTransaction extends Model
     /** @use HasFactory<WalletTransactionFactory> */
     use HasFactory;
 
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'amount' => 'decimal:2',
+            'balance_after' => 'decimal:2',
+        ];
+    }
+
     /** @return BelongsTo<Wallet, $this> */
     public function wallet(): BelongsTo
     {

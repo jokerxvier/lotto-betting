@@ -3,6 +3,18 @@ import { useSyncExternalStore } from 'react';
 export type ResolvedAppearance = 'light' | 'dark';
 export type Appearance = ResolvedAppearance | 'system';
 
+/**
+ * Bump this when the appearance default changes in a way that should reset
+ * stale `'system'` preferences. Explicit `'light'` / `'dark'` choices are
+ * always preserved.
+ *
+ *  v1 (2026-05-18) — flipped product default from `'system'` to `'light'`;
+ *                    sweep existing-user `'system'` values to `'light'` so
+ *                    dark-mode-OS users don't land on dark unexpectedly.
+ */
+const APPEARANCE_VERSION = 1;
+const APPEARANCE_VERSION_KEY = 'appearance.version';
+
 export type UseAppearanceReturn = {
     readonly appearance: Appearance;
     readonly resolvedAppearance: ResolvedAppearance;
@@ -10,7 +22,9 @@ export type UseAppearanceReturn = {
 };
 
 const listeners = new Set<() => void>();
-let currentAppearance: Appearance = 'system';
+// Default to light per product decision — users can still opt into dark via
+// the settings appearance toggle.
+let currentAppearance: Appearance = 'light';
 
 const prefersDark = (): boolean => {
     if (typeof window === 'undefined') {
@@ -31,10 +45,10 @@ const setCookie = (name: string, value: string, days = 365): void => {
 
 const getStoredAppearance = (): Appearance => {
     if (typeof window === 'undefined') {
-        return 'system';
+        return 'light';
     }
 
-    return (localStorage.getItem('appearance') as Appearance) || 'system';
+    return (localStorage.getItem('appearance') as Appearance) || 'light';
 };
 
 const isDarkMode = (appearance: Appearance): boolean => {
@@ -75,9 +89,24 @@ export function initializeTheme(): void {
         return;
     }
 
-    if (!localStorage.getItem('appearance')) {
-        localStorage.setItem('appearance', 'system');
-        setCookie('appearance', 'system');
+    const storedVersion = Number(
+        localStorage.getItem(APPEARANCE_VERSION_KEY) ?? '0',
+    );
+
+    if (storedVersion < APPEARANCE_VERSION) {
+        // Migrate stale defaults. Only touch `'system'` (or missing) so users
+        // who explicitly picked light/dark via the toggle keep their choice.
+        const stored = localStorage.getItem('appearance');
+
+        if (!stored || stored === 'system') {
+            localStorage.setItem('appearance', 'light');
+            setCookie('appearance', 'light');
+        }
+
+        localStorage.setItem(
+            APPEARANCE_VERSION_KEY,
+            String(APPEARANCE_VERSION),
+        );
     }
 
     currentAppearance = getStoredAppearance();
@@ -91,7 +120,7 @@ export function useAppearance(): UseAppearanceReturn {
     const appearance: Appearance = useSyncExternalStore(
         subscribe,
         () => currentAppearance,
-        () => 'system',
+        () => 'light',
     );
 
     const resolvedAppearance: ResolvedAppearance = isDarkMode(appearance)

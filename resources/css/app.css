@@ -7,6 +7,13 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ─── Tokens exposed to Tailwind utilities ──────────────────────────────
+ * Following rules/THEME.md §2: every color used in components must be a
+ * named token here, never a hardcoded oklch() / hex / Tailwind color name
+ * (e.g. `bg-blue-600`). Custom Lotto tokens (lotto-ball, success, warning,
+ * game-*, surface-nav) follow the shadcn `name` / `name-foreground` pair
+ * convention so they drop into any CVA variant without surprises.
+ */
 @theme {
     --font-sans:
         'Instrument Sans', ui-sans-serif, system-ui, sans-serif,
@@ -16,6 +23,7 @@
     --radius-lg: var(--radius);
     --radius-md: calc(var(--radius) - 2px);
     --radius-sm: calc(var(--radius) - 4px);
+    --radius-xl: calc(var(--radius) * 1.4);
 
     --color-background: var(--background);
     --color-foreground: var(--foreground);
@@ -59,34 +67,73 @@
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-ring: var(--sidebar-ring);
+
+    /* ─── Lotto-specific tokens (THEME.md §2) ─── */
+    --color-lotto-ball: var(--lotto-ball);
+    --color-lotto-ball-foreground: var(--lotto-ball-foreground);
+    --color-success: var(--success);
+    --color-success-foreground: var(--success-foreground);
+    --color-warning: var(--warning);
+    --color-warning-foreground: var(--warning-foreground);
+    --color-game-2d: var(--game-2d);
+    --color-game-3d: var(--game-3d);
+    --color-game-4d: var(--game-4d);
+    --color-game-6d: var(--game-6d);
+    --color-surface-nav: var(--surface-nav);
+    --color-surface-nav-foreground: var(--surface-nav-foreground);
 }
 
 :root {
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.145 0 0);
+    /* shadcn surfaces */
+    --background: oklch(0.97 0.005 240);
+    --foreground: oklch(0.18 0.02 240);
     --card: oklch(1 0 0);
-    --card-foreground: oklch(0.145 0 0);
+    --card-foreground: oklch(0.18 0.02 240);
     --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.145 0 0);
-    --primary: oklch(0.205 0 0);
-    --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.97 0 0);
-    --secondary-foreground: oklch(0.205 0 0);
-    --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.556 0 0);
-    --accent: oklch(0.97 0 0);
-    --accent-foreground: oklch(0.205 0 0);
-    --destructive: oklch(0.577 0.245 27.325);
-    --destructive-foreground: oklch(0.577 0.245 27.325);
-    --border: oklch(0.922 0 0);
-    --input: oklch(0.922 0 0);
-    --ring: oklch(0.87 0 0);
+    --popover-foreground: oklch(0.18 0.02 240);
+    --muted: oklch(0.95 0.01 240);
+    --muted-foreground: oklch(0.5 0.02 240);
+    --border: oklch(0.91 0.01 240);
+    --input: oklch(0.91 0.01 240);
+    --ring: oklch(0.58 0.2 255);
+
+    /* shadcn brand — Lotto blue */
+    --primary: oklch(0.58 0.2 255);
+    --primary-foreground: oklch(0.99 0 0);
+
+    --secondary: oklch(0.93 0.01 240);
+    --secondary-foreground: oklch(0.18 0.02 240);
+
+    --accent: oklch(0.93 0.01 240);
+    --accent-foreground: oklch(0.18 0.02 240);
+
+    --destructive: oklch(0.58 0.22 25);
+    --destructive-foreground: oklch(0.99 0 0);
+
+    /* Custom Lotto PH tokens (not in shadcn defaults) */
+    --lotto-ball: oklch(0.88 0.18 95);
+    --lotto-ball-foreground: oklch(0.2 0.02 60);
+
+    --success: oklch(0.65 0.18 145);
+    --success-foreground: oklch(0.99 0 0);
+    --warning: oklch(0.75 0.16 75);
+    --warning-foreground: oklch(0.2 0.04 60);
+
+    --game-2d: oklch(0.55 0.22 25);
+    --game-3d: oklch(0.45 0.22 285);
+    --game-4d: oklch(0.55 0.2 145);
+    --game-6d: oklch(0.6 0.2 50);
+
+    --surface-nav: oklch(0.25 0.01 240);
+    --surface-nav-foreground: oklch(0.95 0 0);
+
+    /* Starter-kit holdovers — still used by AppLayout sidebar on admin pages */
     --chart-1: oklch(0.646 0.222 41.116);
     --chart-2: oklch(0.6 0.118 184.704);
     --chart-3: oklch(0.398 0.07 227.392);
     --chart-4: oklch(0.828 0.189 84.429);
     --chart-5: oklch(0.769 0.188 70.08);
-    --radius: 0.625rem;
+
     --sidebar: oklch(0.985 0 0);
     --sidebar-foreground: oklch(0.145 0 0);
     --sidebar-primary: oklch(0.205 0 0);
@@ -95,28 +142,47 @@
     --sidebar-accent-foreground: oklch(0.205 0 0);
     --sidebar-border: oklch(0.922 0 0);
     --sidebar-ring: oklch(0.87 0 0);
+
+    --radius: 0.75rem;
 }
 
 .dark {
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.145 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.145 0 0);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.985 0 0);
-    --primary-foreground: oklch(0.205 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.396 0.141 25.723);
-    --destructive-foreground: oklch(0.637 0.237 25.331);
-    --border: oklch(0.269 0 0);
-    --input: oklch(0.269 0 0);
-    --ring: oklch(0.439 0 0);
+    --background: oklch(0.15 0.02 240);
+    --foreground: oklch(0.95 0.005 240);
+    --card: oklch(0.2 0.02 240);
+    --card-foreground: oklch(0.95 0.005 240);
+    --popover: oklch(0.2 0.02 240);
+    --popover-foreground: oklch(0.95 0.005 240);
+    --muted: oklch(0.25 0.02 240);
+    --muted-foreground: oklch(0.65 0.02 240);
+    --border: oklch(0.28 0.02 240);
+    --input: oklch(0.28 0.02 240);
+    --ring: oklch(0.62 0.2 255);
+
+    --primary: oklch(0.62 0.2 255);
+    --primary-foreground: oklch(0.99 0 0);
+    --secondary: oklch(0.28 0.02 240);
+    --secondary-foreground: oklch(0.95 0 0);
+    --accent: oklch(0.28 0.02 240);
+    --accent-foreground: oklch(0.95 0 0);
+    --destructive: oklch(0.55 0.22 25);
+    --destructive-foreground: oklch(0.99 0 0);
+
+    --lotto-ball: oklch(0.85 0.18 95);
+    --lotto-ball-foreground: oklch(0.2 0.04 60);
+    --success: oklch(0.6 0.18 145);
+    --success-foreground: oklch(0.99 0 0);
+    --warning: oklch(0.72 0.16 75);
+    --warning-foreground: oklch(0.2 0.04 60);
+
+    --game-2d: oklch(0.55 0.22 25);
+    --game-3d: oklch(0.45 0.22 285);
+    --game-4d: oklch(0.55 0.2 145);
+    --game-6d: oklch(0.6 0.2 50);
+
+    --surface-nav: oklch(0.18 0.01 240);
+    --surface-nav-foreground: oklch(0.95 0 0);
+
     --chart-1: oklch(0.488 0.243 264.376);
     --chart-2: oklch(0.696 0.17 162.48);
     --chart-3: oklch(0.769 0.188 70.08);
@@ -134,10 +200,11 @@
 
 @layer base {
     * {
-        @apply border-border;
+        @apply border-border outline-ring/50;
     }
 
     body {
         @apply bg-background text-foreground;
+        font-feature-settings: 'tnum';
     }
 }

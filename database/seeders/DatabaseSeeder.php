@@ -14,5 +14,9 @@ class DatabaseSeeder extends Seeder
             GameSeeder::class,
             GameBetTypeSeeder::class,
         ]);
+
+        if (! app()->isProduction()) {
+            $this->call(DevFixturesSeeder::class);
+        }
     }
 }

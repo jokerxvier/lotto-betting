@@ -12,6 +12,8 @@
         "fortify-development",
         "laravel-best-practices",
         "wayfinder-development",
-        "pest-testing"
+        "pest-testing",
+        "inertia-react-development",
+        "tailwindcss-development"
     ]
 }

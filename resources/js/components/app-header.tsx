@@ -32,7 +32,7 @@ import { UserMenuContent } from '@/components/user-menu-content';
 import { useCurrentUrl } from '@/hooks/use-current-url';
 import { useInitials } from '@/hooks/use-initials';
 import { cn, toUrl } from '@/lib/utils';
-import { dashboard } from '@/routes';
+import { lotto } from '@/routes';
 import type { BreadcrumbItem, NavItem } from '@/types';
 
 type Props = {
@@ -41,8 +41,8 @@ type Props = {
 
 const mainNavItems: NavItem[] = [
     {
-        title: 'Dashboard',
-        href: dashboard(),
+        title: 'Lotto',
+        href: lotto(),
         icon: LayoutGrid,
     },
 ];
@@ -135,7 +135,7 @@ export function AppHeader({ breadcrumbs = [] }: Props) {
                     </div>
 
                     <Link
-                        href={dashboard()}
+                        href={lotto()}
                         prefetch
                         className="flex items-center space-x-2"
                     >
@@ -219,7 +219,11 @@ export function AppHeader({ breadcrumbs = [] }: Props) {
                                     <Avatar className="size-8 overflow-hidden rounded-full">
                                         <AvatarImage
                                             src={auth.user?.avatar}
-                                            alt={auth.user?.name}
+                                            alt={
+                                                auth.user?.name ??
+                                                auth.user?.username ??
+                                                ''
+                                            }
                                         />
                                         <AvatarFallback className="rounded-lg bg-neutral-200 text-black dark:bg-neutral-700 dark:text-white">
                                             {getInitials(auth.user?.name ?? '')}

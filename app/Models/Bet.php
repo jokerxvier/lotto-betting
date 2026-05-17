@@ -31,6 +31,8 @@ class Bet extends Model
     protected function casts(): array
     {
         return [
+            'amount' => 'decimal:2',
+            'potential_payout' => 'decimal:2',
             'settled_at' => 'datetime',
         ];
     }

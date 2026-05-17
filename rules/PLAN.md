@@ -1,8 +1,19 @@
 # Lotto PH — Project Plan
 
 A Philippine lotto betting web app (PCSO-style: EZ2 / Swertres / 6-digit games) built on **Laravel 12 + Inertia.js v2 + React 18 + TypeScript**.
+---
 
-> ⚠️ Domain note: This is a real-money betting product. Treat **wallet integrity, bet cutoffs, and audit logging** as P0. See `SECURITY.md` for non-negotiables.
+## 0. Status legend
+
+Every numbered Phase item below carries a status marker. **Mark items as `✅ done` only when the feature is shipped, tested, and merged.** Half-done work stays `🟡 in-progress`. Update this file in the same PR that ships the feature — never let docs drift behind code.
+
+| Marker | Meaning |
+|---|---|
+| ✅ done | Shipped, tested, merged on `main` |
+| 🟡 in-progress | Actively being built on a branch / not yet merged |
+| ⬜ todo | Not started |
+| ⛔ blocked | Cannot proceed (depends on an open question or external decision — link the blocker) |
+| 🗑 dropped | Removed from scope — keep the line with a note explaining why |
 
 ---
 
@@ -173,32 +184,35 @@ GET   /admin/games               → Manage games + bet types + payouts (dual-co
 ## 6. Phases & Milestones
 
 ### Phase 0 — Bootstrap (3–4 days)
-- Fresh Laravel 12 starter (React + TS variant).
-- shadcn/ui setup, Tailwind theme tokens from `THEME.md`.
-- Database schema + migrations + factories + seeders.
-- CI: GitHub Actions running Pest + typecheck + ESLint.
-- Forge staging environment provisioned.
+- ✅ Fresh Laravel 12 starter (React + TS variant).
+- ✅ shadcn/ui setup, Tailwind theme tokens from `THEME.md`.
+- ✅ Database schema + migrations + factories.
+- ✅ Seeders — `GameSeeder` + `GameBetTypeSeeder` + `DevFixturesSeeder` (admin + 3 players each with funded wallets + 2 settled + 2 upcoming draws + sample bets; skipped in production).
+- ✅ CI: GitHub Actions running Pest + typecheck + ESLint.
+- ❓ Forge staging environment provisioned — confirm.
 
 ### Phase 1 — Core MVP (2–3 weeks)
-- Auth (both methods).
-- Wallet read + admin top-up.
-- Game cards on home (matching screenshot).
-- Place bet (current draw only).
-- Tickets list + detail.
-- Results page.
-- Draw settlement job.
+- ✅ **Auth (both methods)** — Telegram Login Widget + combined username/PIN login-or-signup (single screen, two steps; auto-creates account on unknown username, explicit "Invalid password." on known username — see `rules/UI_FLOWS.md` §10 for the security trade-off). 6-digit PIN locked. Lockout state machine + audit-log channel + session hardening (1-day lifetime, encrypted) shipped together. See §4.1–4.2.
+- ✅ Wallet read + admin top-up — `/wallet` shows balance + recent activity; `/admin/wallets` (gated by `EnsureAdmin` + `is_admin` flag) credits by `wallet_code`. All mutations flow through `App\Services\WalletService::credit` (Hard Rule 3: `DB::transaction` + `lockForUpdate` + idempotency-key dedupe + ledger row).
+- ✅ Game cards on home — `/lotto` shows one card per active game with payout label, latest result chips, next-draw clock with live countdown, and (disabled) New Bet + Advance buttons. New `LottoLayout` (top bar + 4-tab bottom nav) is the mobile shell for `/lotto` + `/wallet`; Results + Tickets tabs are "Soon" pills until those pages ship. Wallet balance shared globally via `HandleInertiaRequests::share()`.
+- ✅ Place bet (current draw only) — bottom-sheet wizard on `/lotto` (pick numbers → game type → preset/custom amount), `POST /games/{game}/bet` runs `PlaceBetAction` inside `DB::transaction` with `lockForUpdate` + cutoff re-check + payout snapshot via `App\Services\PayoutCalculator` (Brick\Money\Money, RoundingMode::DOWN) + wallet debit via `WalletService::debit` + `BetPlaced` event + audit log. Idempotency keyed per bet. Compound rate limit `bet-place` 30/min per user.
+- ✅ Tickets list + detail — `/tickets` lists the auth user's recent bets (Schedule ↔ Status grouping toggle); `/tickets/{bet}` shows full detail with legs, draw result if settled, and payout. Route-model-bound + scoped to user (404 on others' tickets). Tickets tab in bottom nav un-stubbed.
+- ✅ Results page — `/results` lists draws from the last 7 days (date-grouped sections), with state derived per draw: `settled` shows the winning numbers as `LottoBall variant=result`, `open` shows a live cutoff countdown, `awaiting` shows empty pip placeholders. Results tab in bottom nav un-stubbed.
+- ✅ Cart-style bet builder — inline draft legs on each game card (numbers + bet type + amount + ✕), sticky PAY TICKETS bar at bottom showing leg count + total. `POST /bets/cart` runs each draft as its own Bet inside one outer `DB::transaction`; per-leg `leg_token` UUIDs flow into `bets.idempotency_key` so retries are safe. Replaces the prior single-bet POST flow.
+- ✅ Telegram Mini App bridge — `https://telegram.org/js/telegram-web-app.js` loaded in `app.blade.php`; `bootTelegramWebApp()` in `app.tsx` auto-POSTs `WebApp.initData` to `POST /auth/telegram/web-app` on `/` or `/login`. Server validates HMAC via `VerifyTelegramInitDataAction` (`WebAppData` secret derivation, 5-min replay window), then hands off to the existing `RegisterWithTelegramAction`. Bot: **@ezswerte_bot** (token in `.env`, owner: jasonjavier06@gmail.com).
+- ⬜ Draw settlement job.
 
 ### Phase 2 — Hardening (1–2 weeks)
-- Advance betting.
-- Idempotency + race tests under load (k6 or Locust).
-- Audit log surface in admin.
-- Telegram bot for draw-result push.
-- Polish + accessibility pass.
+- ⬜ Advance betting.
+- ⬜ Idempotency + race tests under load (k6 or Locust).
+- ⬜ Audit log surface in admin.
+- ⬜ Telegram bot for draw-result push.
+- ⬜ Polish + accessibility pass.
 
 ### Phase 3 — Payments (3–4 weeks)
-- GCash / Maya integration for deposits.
-- Manual review for withdrawals → automated tier.
-- KYC partner integration.
+- ⬜ GCash / Maya integration for deposits.
+- ⬜ Manual review for withdrawals → automated tier.
+- ⬜ KYC partner integration.
 
 ---
 

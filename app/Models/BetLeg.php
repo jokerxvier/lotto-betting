@@ -28,6 +28,9 @@ class BetLeg extends Model
     {
         return [
             'numbers' => 'array',
+            'amount' => 'decimal:2',
+            'potential_payout' => 'decimal:2',
+            'payout' => 'decimal:2',
         ];
     }
 

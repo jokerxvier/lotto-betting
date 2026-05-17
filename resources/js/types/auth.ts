@@ -1,24 +1,21 @@
 export type User = {
     id: number;
-    name: string;
-    email: string;
+    name: string | null;
+    username: string | null;
+    wallet_code: string;
+    telegram_id: number | null;
     avatar?: string;
-    email_verified_at: string | null;
-    two_factor_enabled?: boolean;
     created_at: string;
     updated_at: string;
     [key: string]: unknown;
 };
 
+export type SharedWallet = {
+    balance: string;
+    wallet_code: string;
+};
+
 export type Auth = {
-    user: User;
-};
-
-export type TwoFactorSetupData = {
-    svg: string;
-    url: string;
-};
-
-export type TwoFactorSecretKey = {
-    secretKey: string;
+    user: User | null;
+    wallet: SharedWallet | null;
 };

@@ -44,7 +44,61 @@ expect()->extend('toBeOne', function () {
 |
 */
 
-function something()
+/**
+ * Sign a Telegram Login Widget payload exactly the way the widget does, so
+ * tests can exercise VerifyTelegramLoginAction end-to-end. The check string
+ * is sorted key=value pairs joined with "\n" (no trailing newline) and the
+ * HMAC secret is sha256(bot_token, raw=true).
+ *
+ * @param  array<string, mixed>  $payload
+ * @return array<string, mixed>
+ */
+function signTelegramPayload(array $payload, string $token = 'TEST-BOT-TOKEN'): array
 {
-    // ..
+    ksort($payload);
+    $checkString = '';
+    foreach ($payload as $key => $value) {
+        $checkString .= "{$key}={$value}\n";
+    }
+    $checkString = rtrim($checkString, "\n");
+    $hash = hash_hmac('sha256', $checkString, hash('sha256', $token, true));
+
+    return [...$payload, 'hash' => $hash];
+}
+
+/**
+ * Build a Telegram Mini App `initData` querystring the same way Telegram's
+ * client does, so tests can exercise VerifyTelegramInitDataAction end-to-end.
+ * The check string is sorted "k=v\n…" pairs and the HMAC secret derives from
+ * `HMAC-SHA256("WebAppData", bot_token, raw=true)`.
+ *
+ * @param  array<string, mixed>  $user  full user object embedded as JSON
+ * @param  array<string, scalar>  $extra  extra top-level fields, e.g. `auth_date`
+ */
+function signTelegramInitData(array $user, array $extra = [], string $token = 'TEST-BOT-TOKEN'): string
+{
+    $extra['auth_date'] ??= now()->timestamp;
+    $pairs = [
+        ...array_map(fn ($v): string => (string) $v, $extra),
+        'user' => json_encode($user, JSON_UNESCAPED_UNICODE),
+    ];
+
+    ksort($pairs);
+    $checkString = '';
+    foreach ($pairs as $key => $value) {
+        $checkString .= "{$key}={$value}\n";
+    }
+    $checkString = rtrim($checkString, "\n");
+
+    $secret = hash_hmac('sha256', $token, 'WebAppData', true);
+    $hash = hash_hmac('sha256', $checkString, $secret);
+
+    $pairs['hash'] = $hash;
+
+    $parts = [];
+    foreach ($pairs as $key => $value) {
+        $parts[] = urlencode($key).'='.urlencode($value);
+    }
+
+    return implode('&', $parts);
 }

@@ -1,14 +1,53 @@
 <?php
 
+declare(strict_types=1);
+
+use App\Http\Controllers\Admin\WalletController as AdminWalletController;
+use App\Http\Controllers\BetController;
+use App\Http\Controllers\CartController;
+use App\Http\Controllers\LottoHomeController;
+use App\Http\Controllers\ResultsController;
+use App\Http\Controllers\TicketsController;
+use App\Http\Controllers\WalletController;
+use App\Http\Middleware\EnsureAccountSetupIsComplete;
+use App\Http\Middleware\EnsureAdmin;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
-use Laravel\Fortify\Features;
 
-Route::inertia('/', 'welcome', [
-    'canRegister' => Features::enabled(Features::registration()),
-])->name('home');
+Route::get('/', function () {
+    return Auth::check()
+        ? redirect()->route('lotto')
+        : redirect()->route('login');
+})->name('home');
 
-Route::middleware(['auth', 'verified'])->group(function () {
-    Route::inertia('dashboard', 'dashboard')->name('dashboard');
+Route::middleware(['auth', EnsureAccountSetupIsComplete::class])->group(function (): void {
+    Route::get('lotto', [LottoHomeController::class, 'index'])->name('lotto');
+
+    Route::get('wallet', [WalletController::class, 'index'])
+        ->name('wallet.index');
+
+    Route::post('games/{game}/bet', [BetController::class, 'store'])
+        ->middleware('throttle:bet-place')
+        ->name('games.bet.store');
+
+    Route::post('bets/cart', [CartController::class, 'store'])
+        ->middleware('throttle:bet-place')
+        ->name('bets.cart.store');
+
+    Route::get('tickets', [TicketsController::class, 'index'])->name('tickets.index');
+    Route::get('tickets/{bet}', [TicketsController::class, 'show'])->name('tickets.show');
+
+    Route::get('results', [ResultsController::class, 'index'])->name('results.index');
 });
 
+Route::middleware(['auth', EnsureAccountSetupIsComplete::class, EnsureAdmin::class])
+    ->prefix('admin')->name('admin.')->group(function (): void {
+        Route::get('wallets', [AdminWalletController::class, 'create'])
+            ->name('wallets.create');
+
+        Route::post('wallets/top-up', [AdminWalletController::class, 'topUp'])
+            ->name('wallets.top-up');
+    });
+
+require __DIR__.'/auth.php';
 require __DIR__.'/settings.php';

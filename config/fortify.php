@@ -1,7 +1,5 @@
 <?php
 
-use Laravel\Fortify\Features;
-
 return [
 
     /*
@@ -45,9 +43,9 @@ return [
     |
     */
 
-    'username' => 'email',
+    'username' => 'username',
 
-    'email' => 'email',
+    'email' => 'username',
 
     /*
     |--------------------------------------------------------------------------
@@ -73,7 +71,7 @@ return [
     |
     */
 
-    'home' => '/dashboard',
+    'home' => '/lotto',
 
     /*
     |--------------------------------------------------------------------------
@@ -115,8 +113,7 @@ return [
     */
 
     'limiters' => [
-        'login' => 'login',
-        'two-factor' => 'two-factor',
+        'login' => 'pin-login',
     ],
 
     /*
@@ -144,14 +141,9 @@ return [
     */
 
     'features' => [
-        Features::registration(),
-        Features::resetPasswords(),
-        Features::emailVerification(),
-        Features::twoFactorAuthentication([
-            'confirm' => true,
-            'confirmPassword' => true,
-            // 'window' => 0
-        ]),
+        // Email/password, registration, password reset, email verification,
+        // and TOTP 2FA are intentionally disabled — this app uses custom
+        // Telegram + username/PIN auth (see rules/SECURITY.md §1).
     ],
 
 ];

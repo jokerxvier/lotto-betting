@@ -379,27 +379,45 @@ Not in the screenshots — proposed.
 
 ## 10. Auth Screens (`/login`)
 
-Single page with two tabs: **Telegram** | **Username + PIN**.
+Single full-bleed brand-blue page, two **sequential steps** (not tabs). Reference UI: s3app.live/login.
 
-### Telegram tab
-- Big "Continue with Telegram" button mounting the official Telegram Login Widget.
-- Below: "First time? You'll be asked to set a PIN."
+### Step 1 — Username
+- Username input centered, auto-lowercase, no leading/trailing whitespace.
+- `CONTINUE` button (cyan accent).
+- Helper copy: "New username? We'll create the account on the next step."
 
-### Username + PIN tab
-- Username input (auto-lowercase, no leading/trailing whitespace).
-- PIN input — 4–6 digits, masked, `inputMode="numeric"`. Show numeric keypad on mobile.
-- Submit button.
-- "Forgot PIN?" link → `/auth/reset` (Phase 2; requires Telegram-linked recovery).
+### Step 2 — PIN
+- 6-digit PIN entered via 6 `<InputOTPSlot>`s (numeric-only, `inputMode="numeric"`).
+- Auto-submits on the 6th digit (no submit button).
+- Back arrow returns to Step 1 (does not lose the username).
 
-### Errors
-- Generic "Invalid username or PIN" — don't disclose whether the username exists.
-- Lockout message after N failures: "Too many attempts. Try again in 30 minutes."
+### Combined login / sign-up (product decision)
+A single submit handles both cases:
+- **Unknown username** → account is auto-created with the entered PIN, after `App\Rules\ComplexPin` passes (6 digits, no `111111`, no `123456`). User is signed in immediately.
+- **Known username + correct PIN** → signed in.
+- **Known username + wrong PIN** → "Invalid password." (the PIN-side error is explicit on purpose).
+
+> ⚠️ This intentionally relaxes the historical "don't disclose whether the username exists" stance. Trade-offs:
+> 1. Username enumeration is trivial (probe → "Invalid password." vs auto-create).
+> 2. Auto-create doubles as a username-squatting vector — any unowned name becomes yours with the first PIN you type.
+>
+> If you're hardening this later, reintroduce a generic error + a separate `/register` route and remove the auto-create branch.
+
+### Errors (current strings)
+| Scenario | Message |
+|---|---|
+| Wrong PIN on existing user | `Invalid password.` |
+| Telegram-only user attempts PIN login | `This account uses Telegram sign-in. Finish setup from there.` |
+| Locked (5 wrong PINs in 15 min → 30 min lockout) | `Too many attempts. Try again in 30 minutes.` |
+| Throttled (5/min per username+IP, 20/min per IP) | `429 Too Many Requests` |
+| Weak PIN on auto-create | `The pin cannot use the same digit repeated.` / `The pin cannot use a sequential pattern.` |
+| Reserved or malformed username on auto-create | `Username must be 3-32 characters: lowercase letters, digits, or underscore.` |
 
 ### Post-Telegram first-login
-If Telegram returns a verified user but no `pin_hash` is set, redirect to `/auth/setup-pin`:
-- "Set a PIN to protect your wallet."
-- New PIN + confirm.
-- Server runs the same complexity validation as initial signup (no sequential/repeating).
+If Telegram returns a verified user but no `username` or `pin_hash` is set, the middleware redirects them to `/auth/setup-pin`:
+- Step 1: pick a username (same regex/reserved-list as auto-create).
+- Step 2: enter a 6-digit PIN.
+- Step 3: confirm the same PIN; submit happens automatically on the 6th digit of the confirmation.
 
 ---
 

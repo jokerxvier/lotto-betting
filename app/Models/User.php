@@ -4,43 +4,38 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Notifications\Notifiable;
-use Laravel\Fortify\TwoFactorAuthenticatable;
 
 #[Fillable([
     'name',
-    'email',
-    'password',
     'telegram_id',
     'username',
     'pin_hash',
     'status',
+    'is_admin',
     'wallet_code',
     'locked_until',
 ])]
 #[Hidden([
-    'password',
     'pin_hash',
-    'two_factor_secret',
-    'two_factor_recovery_codes',
-    'remember_token',
 ])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable, TwoFactorAuthenticatable;
+    use HasFactory;
 
     private const WALLET_CODE_ALPHABET = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
 
     private const WALLET_CODE_LENGTH = 8;
+
+    private const WALLET_CODE_MAX_ATTEMPTS = 10;
 
     /**
      * @return array<string, string>
@@ -48,10 +43,8 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
             'pin_hash' => 'hashed',
-            'two_factor_confirmed_at' => 'datetime',
+            'is_admin' => 'boolean',
             'locked_until' => 'datetime',
         ];
     }
@@ -63,6 +56,20 @@ class User extends Authenticatable
                 $user->wallet_code = self::generateWalletCode();
             }
         });
+    }
+
+    public function isLocked(): bool
+    {
+        return $this->locked_until !== null && $this->locked_until->isFuture();
+    }
+
+    /**
+     * @param  Builder<self>  $query
+     * @return Builder<self>
+     */
+    public function scopeLocked(Builder $query): Builder
+    {
+        return $query->whereNotNull('locked_until')->where('locked_until', '>', now());
     }
 
     /** @return HasOne<Wallet, $this> */
@@ -79,13 +86,16 @@ class User extends Authenticatable
 
     private static function generateWalletCode(): string
     {
-        do {
+        for ($attempt = 0; $attempt < self::WALLET_CODE_MAX_ATTEMPTS; $attempt++) {
             $code = '';
             for ($i = 0; $i < self::WALLET_CODE_LENGTH; $i++) {
                 $code .= self::WALLET_CODE_ALPHABET[random_int(0, strlen(self::WALLET_CODE_ALPHABET) - 1)];
             }
-        } while (self::query()->where('wallet_code', $code)->exists());
+            if (! self::query()->where('wallet_code', $code)->exists()) {
+                return $code;
+            }
+        }
 
-        return $code;
+        throw new \RuntimeException('Could not generate a unique wallet_code after '.self::WALLET_CODE_MAX_ATTEMPTS.' attempts.');
     }
 }

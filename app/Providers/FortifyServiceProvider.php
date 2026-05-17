@@ -1,95 +1,79 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Providers;
 
-use App\Actions\Fortify\CreateNewUser;
-use App\Actions\Fortify\ResetUserPassword;
+use App\Actions\Auth\AuthenticateOrCreateAction;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
-use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
-use Laravel\Fortify\Features;
 use Laravel\Fortify\Fortify;
 
-class FortifyServiceProvider extends ServiceProvider
+final class FortifyServiceProvider extends ServiceProvider
 {
-    /**
-     * Register any application services.
-     */
-    public function register(): void
-    {
-        //
-    }
-
-    /**
-     * Bootstrap any application services.
-     */
     public function boot(): void
     {
-        $this->configureActions();
+        $this->configureCredentialCheck();
         $this->configureViews();
         $this->configureRateLimiting();
     }
 
     /**
-     * Configure Fortify actions.
+     * Wire Fortify's POST /login to the combined login/sign-up action.
+     *
+     * Unknown username → account auto-created with the supplied PIN.
+     * Known username + wrong PIN → ValidationException("Invalid password.").
+     *
+     * The form posts the PIN under the `password` field so Fortify's
+     * built-in `password` required-rule keeps passing.
      */
-    private function configureActions(): void
+    private function configureCredentialCheck(): void
     {
-        Fortify::resetUserPasswordsUsing(ResetUserPassword::class);
-        Fortify::createUsersUsing(CreateNewUser::class);
+        Fortify::authenticateUsing(function (Request $request): mixed {
+            return app(AuthenticateOrCreateAction::class)->execute(
+                Str::lower(trim((string) $request->input('username'))),
+                (string) $request->input('password'),
+            );
+        });
     }
 
-    /**
-     * Configure Fortify views.
-     */
     private function configureViews(): void
     {
         Fortify::loginView(fn (Request $request) => Inertia::render('auth/login', [
-            'canResetPassword' => Features::enabled(Features::resetPasswords()),
-            'canRegister' => Features::enabled(Features::registration()),
+            'telegramBotUsername' => config('services.telegram.bot_username'),
             'status' => $request->session()->get('status'),
         ]));
-
-        Fortify::resetPasswordView(fn (Request $request) => Inertia::render('auth/reset-password', [
-            'email' => $request->email,
-            'token' => $request->route('token'),
-            'passwordRules' => Password::defaults()->toPasswordRulesString(),
-        ]));
-
-        Fortify::requestPasswordResetLinkView(fn (Request $request) => Inertia::render('auth/forgot-password', [
-            'status' => $request->session()->get('status'),
-        ]));
-
-        Fortify::verifyEmailView(fn (Request $request) => Inertia::render('auth/verify-email', [
-            'status' => $request->session()->get('status'),
-        ]));
-
-        Fortify::registerView(fn () => Inertia::render('auth/register', [
-            'passwordRules' => Password::defaults()->toPasswordRulesString(),
-        ]));
-
-        Fortify::twoFactorChallengeView(fn () => Inertia::render('auth/two-factor-challenge'));
-
-        Fortify::confirmPasswordView(fn () => Inertia::render('auth/confirm-password'));
     }
 
     /**
-     * Configure rate limiting.
+     * Compound limit per rules/SECURITY.md §1.3:
+     *  - 5/min per username+IP (targeted brute-force defence)
+     *  - 20/min per IP         (global flood defence)
      */
     private function configureRateLimiting(): void
     {
-        RateLimiter::for('two-factor', function (Request $request) {
-            return Limit::perMinute(5)->by($request->session()->get('login.id'));
+        RateLimiter::for('pin-login', function (Request $request): array {
+            $username = Str::lower((string) $request->input('username'));
+            $ip = (string) $request->ip();
+
+            return [
+                Limit::perMinute(5)->by($username.'|'.$ip),
+                Limit::perMinute(20)->by($ip),
+            ];
         });
 
-        RateLimiter::for('login', function (Request $request) {
-            $throttleKey = Str::transliterate(Str::lower($request->input(Fortify::username())).'|'.$request->ip());
+        RateLimiter::for('telegram-login', function (Request $request): Limit {
+            return Limit::perMinute(30)->by((string) $request->ip());
+        });
 
-            return Limit::perMinute(5)->by($throttleKey);
+        RateLimiter::for('bet-place', function (Request $request): Limit {
+            return Limit::perMinute(30)->by(
+                (string) ($request->user()?->id ?? $request->ip()),
+            );
         });
     }
 }

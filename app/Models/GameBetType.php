@@ -32,6 +32,10 @@ class GameBetType extends Model
     {
         return [
             'active' => 'boolean',
+            'base_bet_amount' => 'decimal:2',
+            'base_payout_amount' => 'decimal:2',
+            'min_bet' => 'decimal:2',
+            'max_bet' => 'decimal:2',
         ];
     }
 

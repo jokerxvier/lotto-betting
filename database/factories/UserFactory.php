@@ -8,20 +8,16 @@ use App\Models\User;
 use App\Models\Wallet;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 
 /**
  * @extends Factory<User>
  */
 class UserFactory extends Factory
 {
-    /**
-     * The current password being used by the factory.
-     */
-    protected static ?string $password;
+    protected static ?string $cachedPinHash = null;
 
     /**
-     * Define the model's default state.
+     * Default state — a username + PIN account, the most common case in tests.
      *
      * @return array<string, mixed>
      */
@@ -29,41 +25,46 @@ class UserFactory extends Factory
     {
         return [
             'name' => fake()->name(),
-            'email' => fake()->unique()->safeEmail(),
-            'email_verified_at' => now(),
-            'password' => static::$password ??= Hash::make('password'),
-            'remember_token' => Str::random(10),
-            'two_factor_secret' => null,
-            'two_factor_recovery_codes' => null,
-            'two_factor_confirmed_at' => null,
+            'telegram_id' => null,
+            'username' => fake()->unique()->userName(),
+            'pin_hash' => static::$cachedPinHash ??= Hash::make('4729'),
+            'status' => 'active',
+            'locked_until' => null,
         ];
     }
 
     /**
-     * Indicate that the model's email address should be unverified.
+     * Telegram-only account: signed up via widget, hasn't completed PIN setup yet.
      */
-    public function unverified(): static
+    public function telegramOnly(?int $telegramId = null): static
     {
-        return $this->state(fn (array $attributes) => [
-            'email_verified_at' => null,
+        return $this->state(fn (): array => [
+            'telegram_id' => $telegramId ?? fake()->unique()->randomNumber(8, true),
+            'username' => null,
+            'pin_hash' => null,
         ]);
     }
 
     /**
-     * Indicate that the model has two-factor authentication configured.
+     * Telegram account that has completed PIN setup (linked + active).
      */
-    public function withTwoFactor(): static
+    public function telegramLinked(?int $telegramId = null): static
     {
-        return $this->state(fn (array $attributes) => [
-            'two_factor_secret' => encrypt('secret'),
-            'two_factor_recovery_codes' => encrypt(json_encode(['recovery-code-1'])),
-            'two_factor_confirmed_at' => now(),
+        return $this->state(fn (): array => [
+            'telegram_id' => $telegramId ?? fake()->unique()->randomNumber(8, true),
         ]);
     }
 
-    /**
-     * Persist a paired wallet after the user is created.
-     */
+    public function locked(): static
+    {
+        return $this->state(['locked_until' => now()->addMinutes(30)]);
+    }
+
+    public function admin(): static
+    {
+        return $this->state(['is_admin' => true]);
+    }
+
     public function withWallet(string $balance = '0.00'): static
     {
         return $this->afterCreating(function (User $user) use ($balance): void {

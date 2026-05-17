@@ -27,3 +27,9 @@ yarn-error.log
 /.nova
 /.vscode
 /.zed
+
+# Agent/MCP local artifacts (Playwright snapshots, scheduled-task locks, ad-hoc screenshots)
+/.playwright-mcp/
+/.claude/scheduled_tasks.lock
+/lotto-home-snapshot.yml
+/results-page.png
