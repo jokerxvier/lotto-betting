@@ -29,7 +29,7 @@ Commit and branching conventions for Lotto PH. Follows **Conventional Commits 1.
 - `Refs: #123` for a related issue.
 - `Closes: #123` to auto-close on merge.
 - `BREAKING CHANGE: <description>` for incompatible changes (rare in this project).
-- `Co-authored-by: Name <email>` for pair work.
+- `Co-authored-by: Name <email>` for pair work — **humans only**. Never add `Co-authored-by: Claude …` or any AI-assistant attribution trailer; the user's settings reject it as impersonation, and authorship should reflect humans on the team.
 
 ---
 
