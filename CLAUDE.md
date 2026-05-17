@@ -68,6 +68,29 @@ Frontend: Inertia page → AppLayout → domain components (`components/lotto/`,
 | `rules/GIT_COMMIT.md` | Committing or opening a PR |
 | `rules/AGENTS.md` | Agents |
 
+## Skills
+
+Project skills live in `.claude/skills/` (some symlinked from `.agents/skills/`, tracked in `skills-lock.json`). See `rules/AGENTS.md` → *Skills Activation* for the Boost-side activation rule. **Rule docs always win over skills** when they conflict — skills give generic guidance, rule docs encode Lotto PH hard rules.
+
+| Skill | Use when… | Rule doc that overrides |
+|---|---|---|
+| `laravel-best-practices` | Writing/reviewing any Laravel PHP code | `rules/LARAVEL_BEST_PRACTICES.md` (money, wallet, cutoffs) |
+| `pest-testing` | Writing/fixing any Pest test (Feature/Unit/Browser, datasets, arch) | — |
+| `wayfinder-development` | Wiring frontend to backend routes/controllers, `@/actions`, `@/routes` | — |
+| `shadcn` | Adding/searching/composing shadcn components, `components.json` | `rules/THEME.md` §0.5–0.6 (substitution table) |
+| `vercel-react-best-practices` | React performance, data fetching, bundle/component optimization | `rules/REACT_BEST_PRACTICES.md` (Inertia specifics) |
+| `git-commit` | Executing the commit (staging + conventional message) | `rules/GIT_COMMIT.md` (style rules) |
+| `fortify-development` | Use only for Fortify primitives that back the custom auth (username+PIN credential check via `Fortify::authenticateUsing`, `app/Actions/Fortify/*`, login throttling, password-confirmation). Do **not** adopt default email/password flows or email-coupled features. Telegram login is custom — Fortify is **not** involved. | `rules/SECURITY.md` |
+| `deploying-laravel-cloud` | **Do not use.** Production is **Forge**, not Laravel Cloud | — |
+
+### UI work: always invoke `/frontend-design:frontend-design`
+
+When building or modifying any UI (page, component, layout, screen), invoke the **`/frontend-design:frontend-design`** skill. It must run alongside — not instead of — the project rules:
+
+1. Load `rules/THEME.md` (shadcn-first substitution, tokens) **and** `rules/UI_FLOWS.md` (screen patterns) first.
+2. Invoke `/frontend-design:frontend-design` for design quality / production polish.
+3. Hard rule still applies: no native `<button>`/`<input>`/`<select>`/`<dialog>`/`window.confirm()` — shadcn primitives only.
+
 ## How to work
 
 - **Identify the relevant `rules/` file before writing code.** Load it. Then code.
