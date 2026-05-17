@@ -1,6 +1,7 @@
 import { Link } from '@inertiajs/react';
+import { ChevronRight } from 'lucide-react';
+import GameEmblem from '@/components/lotto/game-emblem';
 import LottoBall from '@/components/lotto/lotto-ball';
-import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { formatPeso } from '@/lib/money';
 import { cn } from '@/lib/utils';
@@ -40,17 +41,35 @@ const STATUS_LABEL: Record<string, string> = {
     void: 'Void',
 };
 
-const statusBadgeClass = (status: BetStatus): string => {
+/**
+ * Left-border accent maps the ticket status to a semantic token. This is the
+ * single visual cue that lets a tickets list be scanned for wins at a glance.
+ */
+const statusAccent = (status: BetStatus): string => {
     switch (status) {
         case 'won':
-            return 'bg-success text-success-foreground hover:bg-success/90';
+            return 'border-l-success';
+        case 'lost':
+            return 'border-l-muted-foreground/40';
+        case 'void':
+            return 'border-l-destructive';
+        case 'pending':
+        default:
+            return 'border-l-primary';
+    }
+};
+
+const statusChip = (status: BetStatus): string => {
+    switch (status) {
+        case 'won':
+            return 'bg-success/15 text-success';
         case 'lost':
             return 'bg-muted text-muted-foreground';
         case 'void':
-            return 'bg-destructive text-destructive-foreground hover:bg-destructive/90';
+            return 'bg-destructive/15 text-destructive';
         case 'pending':
         default:
-            return 'bg-primary text-primary-foreground hover:bg-primary/90';
+            return 'bg-primary/10 text-primary';
     }
 };
 
@@ -68,17 +87,20 @@ export default function TicketCard({ ticket }: { ticket: Ticket }) {
     return (
         <Link
             href={`/tickets/${ticket.id}`}
-            className="block transition-opacity hover:opacity-90"
+            className="block transition-transform active:scale-[0.99]"
         >
-            <Card>
-                <CardContent className="space-y-3 p-4">
+            <Card
+                className={cn(
+                    'border-l-4 transition-colors hover:bg-muted/40',
+                    statusAccent(ticket.status),
+                )}
+            >
+                <CardContent className="space-y-2.5 p-4">
                     <header className="flex items-start justify-between gap-3">
-                        <div className="flex items-center gap-2">
-                            <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary text-xs font-bold text-primary-foreground uppercase">
-                                {ticket.game.code}
-                            </div>
+                        <div className="flex items-center gap-2.5">
+                            <GameEmblem code={ticket.game.code} size="sm" />
                             <div className="min-w-0">
-                                <p className="text-sm leading-tight font-semibold">
+                                <p className="text-sm leading-tight font-bold">
                                     {ticket.game.name}
                                 </p>
                                 <p className="text-xs text-muted-foreground">
@@ -86,18 +108,18 @@ export default function TicketCard({ ticket }: { ticket: Ticket }) {
                                 </p>
                             </div>
                         </div>
-                        <Badge
+                        <span
                             className={cn(
-                                'uppercase',
-                                statusBadgeClass(ticket.status),
+                                'rounded-full px-2 py-0.5 text-[0.65rem] font-bold tracking-wider uppercase',
+                                statusChip(ticket.status),
                             )}
                         >
                             {STATUS_LABEL[ticket.status] ?? ticket.status}
-                        </Badge>
+                        </span>
                     </header>
 
                     {ticket.preview_leg && (
-                        <div className="flex flex-wrap items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-1.5">
                             {ticket.preview_leg.numbers.map((n, i) => (
                                 <LottoBall
                                     key={i}
@@ -107,24 +129,28 @@ export default function TicketCard({ ticket }: { ticket: Ticket }) {
                                     padTo={padTo}
                                 />
                             ))}
-                            <span className="text-xs text-muted-foreground uppercase">
+                            <span className="text-[0.65rem] font-bold tracking-wider text-muted-foreground uppercase">
                                 {ticket.preview_leg.bet_type_label}
                             </span>
                         </div>
                     )}
 
-                    <footer className="flex items-baseline justify-between text-sm tabular-nums">
-                        <span className="text-muted-foreground">
-                            Bet {formatPeso(ticket.amount)}
+                    <footer className="flex items-baseline justify-between border-t border-border/60 pt-2 text-sm tabular-nums">
+                        <span className="text-xs text-muted-foreground">
+                            Bet{' '}
+                            <span className="font-bold text-foreground">
+                                {formatPeso(ticket.amount)}
+                            </span>
                         </span>
                         <span
                             className={cn(
-                                'font-semibold',
+                                'flex items-center gap-1 font-bold',
                                 ticket.status === 'won' && 'text-success',
                             )}
                         >
                             {ticket.status === 'won' ? 'Won ' : 'Win up to '}
                             {formatPeso(ticket.potential_payout)}
+                            <ChevronRight className="size-3.5 text-muted-foreground" />
                         </span>
                     </footer>
                 </CardContent>

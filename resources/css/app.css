@@ -147,17 +147,20 @@
 }
 
 .dark {
-    --background: oklch(0.15 0.02 240);
-    --foreground: oklch(0.95 0.005 240);
-    --card: oklch(0.2 0.02 240);
-    --card-foreground: oklch(0.95 0.005 240);
-    --popover: oklch(0.2 0.02 240);
-    --popover-foreground: oklch(0.95 0.005 240);
-    --muted: oklch(0.25 0.02 240);
-    --muted-foreground: oklch(0.65 0.02 240);
-    --border: oklch(0.28 0.02 240);
-    --input: oklch(0.28 0.02 240);
-    --ring: oklch(0.62 0.2 255);
+    /* Warmer dark surfaces — the cool-blue dark theme felt clinical for a
+     * daily-lotto product. Slight warmth (hue 250 → 260) reads as "kiosk at
+     * dusk" rather than "spreadsheet at midnight". */
+    --background: oklch(0.16 0.015 255);
+    --foreground: oklch(0.96 0.005 255);
+    --card: oklch(0.21 0.018 255);
+    --card-foreground: oklch(0.96 0.005 255);
+    --popover: oklch(0.21 0.018 255);
+    --popover-foreground: oklch(0.96 0.005 255);
+    --muted: oklch(0.26 0.02 255);
+    --muted-foreground: oklch(0.68 0.02 255);
+    --border: oklch(0.3 0.02 255);
+    --input: oklch(0.3 0.02 255);
+    --ring: oklch(0.65 0.2 255);
 
     --primary: oklch(0.62 0.2 255);
     --primary-foreground: oklch(0.99 0 0);

@@ -56,7 +56,11 @@ export default function LottoTabBar() {
     return (
         <nav
             aria-label="Primary"
-            className="sticky bottom-0 z-10 grid grid-cols-4 border-t border-border bg-background/95 backdrop-blur"
+            className="sticky bottom-0 z-10 grid grid-cols-4 border-t border-surface-nav bg-surface-nav text-surface-nav-foreground"
+            style={{
+                paddingBottom:
+                    'max(env(safe-area-inset-bottom), 0.75rem)',
+            }}
         >
             {TABS.map((tab) => {
                 const active = !tab.disabled && isActive(tab.matches, current);
@@ -65,21 +69,33 @@ export default function LottoTabBar() {
                 const content = (
                     <span
                         className={cn(
-                            'flex flex-col items-center gap-1 py-2 text-xs',
+                            'relative flex h-full min-h-[4.25rem] flex-col items-center justify-start gap-1.5 px-1 pt-3.5 pb-1 text-[0.7rem] leading-none tracking-wide uppercase transition-colors',
                             tab.disabled
-                                ? 'text-muted-foreground/60'
+                                ? 'font-semibold text-surface-nav-foreground/40'
                                 : active
-                                  ? 'font-semibold text-primary'
-                                  : 'text-muted-foreground',
+                                  ? 'font-bold text-primary'
+                                  : 'font-semibold text-surface-nav-foreground/55 hover:text-surface-nav-foreground',
                         )}
                     >
-                        <Icon className="size-5" />
-                        <span className="flex items-center gap-1">
+                        {/* Top-edge indicator for the active tab — a short
+                            primary-color bar, no full pill so the icon and
+                            label can breathe at any viewport height. */}
+                        {active && (
+                            <span
+                                aria-hidden
+                                className="absolute top-0 left-1/2 h-[3px] w-10 -translate-x-1/2 rounded-b-full bg-primary shadow-[0_0_10px_oklch(0.58_0.2_255/0.65)]"
+                            />
+                        )}
+                        <Icon
+                            className="size-[1.35rem] shrink-0"
+                            strokeWidth={active ? 2.4 : 1.8}
+                        />
+                        <span className="flex items-center gap-1 pb-0.5">
                             {tab.label}
                             {tab.disabled && (
                                 <Badge
                                     variant="outline"
-                                    className="h-4 rounded-sm px-1 text-[0.6rem]"
+                                    className="h-3.5 rounded-sm border-surface-nav-foreground/30 px-1 text-[0.55rem] text-surface-nav-foreground/40"
                                 >
                                     Soon
                                 </Badge>
@@ -93,7 +109,7 @@ export default function LottoTabBar() {
                         <div
                             key={tab.label}
                             aria-disabled
-                            className="cursor-not-allowed"
+                            className="flex cursor-not-allowed select-none"
                         >
                             {content}
                         </div>
@@ -106,6 +122,7 @@ export default function LottoTabBar() {
                         href={tab.href}
                         prefetch
                         aria-current={active ? 'page' : undefined}
+                        className="flex transition-transform active:scale-95"
                     >
                         {content}
                     </Link>

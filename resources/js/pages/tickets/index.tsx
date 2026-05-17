@@ -1,6 +1,6 @@
-import { Head } from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
+import { Receipt } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import Heading from '@/components/heading';
 import TicketCard from '@/components/lotto/ticket-card';
 import type { Ticket } from '@/components/lotto/ticket-card';
 import { Button } from '@/components/ui/button';
@@ -74,20 +74,35 @@ export default function TicketsIndex({ tickets }: Props) {
     return (
         <>
             <Head title="Tickets" />
-            <div className="space-y-4 p-4">
-                <Heading title="My tickets" description="Your recent bets." />
+            <div className="space-y-5 p-4">
+                <header className="space-y-0.5">
+                    <h1 className="text-xl font-bold tracking-tight">
+                        My tickets
+                    </h1>
+                    <p className="text-sm text-muted-foreground">
+                        Your recent bets.
+                    </p>
+                </header>
 
-                <div className="flex gap-2" role="tablist">
+                <div
+                    role="tablist"
+                    className="inline-flex rounded-full bg-muted p-0.5"
+                >
                     {(['schedule', 'status'] as ViewMode[]).map((mode) => (
                         <Button
                             key={mode}
                             type="button"
-                            variant={view === mode ? 'default' : 'outline'}
+                            variant="ghost"
                             size="sm"
                             onClick={() => setView(mode)}
                             role="tab"
                             aria-selected={view === mode}
-                            className={cn('capitalize')}
+                            className={cn(
+                                'rounded-full px-4 text-xs font-semibold capitalize transition-all',
+                                view === mode
+                                    ? 'bg-background text-foreground shadow-sm'
+                                    : 'text-muted-foreground hover:bg-transparent hover:text-foreground',
+                            )}
                         >
                             {mode}
                         </Button>
@@ -95,18 +110,28 @@ export default function TicketsIndex({ tickets }: Props) {
                 </div>
 
                 {tickets.length === 0 ? (
-                    <p className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-                        No bets yet. Tap{' '}
-                        <span className="font-semibold text-foreground">
-                            New bet
-                        </span>{' '}
-                        on the Lotto tab to place one.
-                    </p>
+                    <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-border bg-card p-8 text-center">
+                        <div className="flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                            <Receipt className="size-5" />
+                        </div>
+                        <div>
+                            <p className="text-sm font-semibold">
+                                No bets yet
+                            </p>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                                Tap a game on the Lotto tab to place your
+                                first bet.
+                            </p>
+                        </div>
+                        <Button asChild size="sm" className="mt-1">
+                            <Link href="/lotto">Go to Lotto</Link>
+                        </Button>
+                    </div>
                 ) : (
                     <div className="space-y-5">
                         {grouped.map((group) => (
                             <section key={group.key} className="space-y-2">
-                                <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                                <h2 className="sticky top-[3.5rem] z-10 -mx-4 bg-background/85 px-4 py-1 text-[0.7rem] font-bold tracking-wider text-muted-foreground uppercase backdrop-blur-md">
                                     {group.label}
                                 </h2>
                                 <div className="space-y-2">

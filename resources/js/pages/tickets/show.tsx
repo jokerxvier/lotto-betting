@@ -1,14 +1,12 @@
 import { Head, Link } from '@inertiajs/react';
 import { ArrowLeft } from 'lucide-react';
+import GameEmblem from '@/components/lotto/game-emblem';
 import LottoBall from '@/components/lotto/lotto-ball';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     Card,
     CardContent,
-    CardDescription,
     CardHeader,
-    CardTitle,
 } from '@/components/ui/card';
 import { formatPeso } from '@/lib/money';
 import { cn } from '@/lib/utils';
@@ -48,17 +46,31 @@ const STATUS_LABEL: Record<string, string> = {
     void: 'Void',
 };
 
-const statusBadgeClass = (status: string): string => {
+const statusChip = (status: string): string => {
     switch (status) {
         case 'won':
-            return 'bg-success text-success-foreground hover:bg-success/90';
+            return 'bg-success/15 text-success';
         case 'lost':
             return 'bg-muted text-muted-foreground';
         case 'void':
-            return 'bg-destructive text-destructive-foreground hover:bg-destructive/90';
+            return 'bg-destructive/15 text-destructive';
         case 'pending':
         default:
-            return 'bg-primary text-primary-foreground hover:bg-primary/90';
+            return 'bg-primary/10 text-primary';
+    }
+};
+
+const statusAccent = (status: string): string => {
+    switch (status) {
+        case 'won':
+            return 'border-l-success';
+        case 'lost':
+            return 'border-l-muted-foreground/40';
+        case 'void':
+            return 'border-l-destructive';
+        case 'pending':
+        default:
+            return 'border-l-primary';
     }
 };
 
@@ -92,84 +104,100 @@ export default function TicketShow({ ticket }: { ticket: Ticket }) {
                     </Link>
                 </Button>
 
-                <Card>
-                    <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
+                <Card
+                    className={cn(
+                        'border-l-4 overflow-hidden',
+                        statusAccent(ticket.status),
+                    )}
+                >
+                    <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0 pb-3">
                         <div className="flex items-center gap-3">
-                            <div className="flex size-12 shrink-0 items-center justify-center rounded-md bg-primary text-base font-bold text-primary-foreground uppercase">
-                                {ticket.game.code}
-                            </div>
+                            <GameEmblem code={ticket.game.code} size="md" />
                             <div>
-                                <CardTitle className="text-base">
+                                <p className="text-base leading-tight font-bold">
                                     {ticket.game.name}
-                                </CardTitle>
-                                <CardDescription>
+                                </p>
+                                <p className="mt-0.5 text-xs text-muted-foreground">
                                     Draw {formatDateTime(ticket.draw.draw_at)}
-                                </CardDescription>
+                                </p>
                             </div>
                         </div>
-                        <Badge
+                        <span
                             className={cn(
-                                'uppercase',
-                                statusBadgeClass(ticket.status),
+                                'rounded-full px-2.5 py-0.5 text-[0.65rem] font-bold tracking-wider uppercase',
+                                statusChip(ticket.status),
                             )}
                         >
                             {STATUS_LABEL[ticket.status] ?? ticket.status}
-                        </Badge>
+                        </span>
                     </CardHeader>
-                    <CardContent className="grid gap-2 text-sm">
-                        <div className="flex justify-between">
-                            <span className="text-muted-foreground">
-                                Ticket number
-                            </span>
-                            <span className="font-mono">#{ticket.id}</span>
-                        </div>
-                        <div className="flex justify-between">
-                            <span className="text-muted-foreground">
-                                Placed
-                            </span>
-                            <span>{formatDateTime(ticket.placed_at)}</span>
-                        </div>
+                    <CardContent className="space-y-3 text-sm">
+                        <dl className="grid grid-cols-2 gap-2">
+                            <div className="rounded-lg bg-muted/40 px-3 py-2">
+                                <dt className="text-[0.6rem] font-bold tracking-wider text-muted-foreground uppercase">
+                                    Ticket
+                                </dt>
+                                <dd className="font-mono text-sm font-semibold">
+                                    #{ticket.id}
+                                </dd>
+                            </div>
+                            <div className="rounded-lg bg-muted/40 px-3 py-2">
+                                <dt className="text-[0.6rem] font-bold tracking-wider text-muted-foreground uppercase">
+                                    Placed
+                                </dt>
+                                <dd className="text-xs font-medium">
+                                    {formatDateTime(ticket.placed_at)}
+                                </dd>
+                            </div>
+                        </dl>
                         {ticket.settled_at && (
-                            <div className="flex justify-between">
-                                <span className="text-muted-foreground">
+                            <div className="rounded-lg bg-muted/40 px-3 py-2">
+                                <dt className="text-[0.6rem] font-bold tracking-wider text-muted-foreground uppercase">
                                     Settled
-                                </span>
-                                <span>{formatDateTime(ticket.settled_at)}</span>
+                                </dt>
+                                <dd className="text-xs font-medium">
+                                    {formatDateTime(ticket.settled_at)}
+                                </dd>
                             </div>
                         )}
-                        <div className="flex justify-between font-semibold tabular-nums">
-                            <span>Bet</span>
-                            <span>{formatPeso(ticket.amount)}</span>
+                        <div className="flex items-baseline justify-between border-t border-border pt-3 text-sm tabular-nums">
+                            <span className="text-muted-foreground">Bet</span>
+                            <span className="font-bold">
+                                {formatPeso(ticket.amount)}
+                            </span>
                         </div>
                         <div
                             className={cn(
-                                'flex justify-between font-semibold tabular-nums',
+                                'flex items-baseline justify-between text-base tabular-nums',
                                 ticket.status === 'won' && 'text-success',
                             )}
                         >
-                            <span>
+                            <span className="text-xs font-bold tracking-wider uppercase">
                                 {ticket.status === 'won'
                                     ? 'Payout'
-                                    : 'Potential payout'}
+                                    : 'Win up to'}
                             </span>
-                            <span>{formatPeso(ticket.potential_payout)}</span>
+                            <span className="text-lg font-black">
+                                {formatPeso(ticket.potential_payout)}
+                            </span>
                         </div>
                     </CardContent>
                 </Card>
 
                 {ticket.draw.result_numbers && (
                     <Card>
-                        <CardHeader>
-                            <CardDescription className="tracking-wide uppercase">
+                        <CardHeader className="pb-2">
+                            <p className="text-[0.65rem] font-bold tracking-wider text-muted-foreground uppercase">
                                 Drawn result
-                            </CardDescription>
+                            </p>
                         </CardHeader>
                         <CardContent>
-                            <div className="flex flex-wrap items-center gap-2">
+                            <div className="flex flex-wrap items-center justify-center gap-3 rounded-xl bg-muted/40 py-4">
                                 {ticket.draw.result_numbers.map((n, i) => (
                                     <LottoBall
                                         key={i}
                                         value={n}
+                                        size="lg"
                                         padTo={padTo}
                                     />
                                 ))}
@@ -179,27 +207,31 @@ export default function TicketShow({ ticket }: { ticket: Ticket }) {
                 )}
 
                 <Card>
-                    <CardHeader>
-                        <CardTitle className="text-sm tracking-wide text-muted-foreground uppercase">
-                            {ticket.legs.length === 1 ? 'Leg' : 'Legs'}
-                        </CardTitle>
+                    <CardHeader className="pb-2">
+                        <p className="text-[0.65rem] font-bold tracking-wider text-muted-foreground uppercase">
+                            {ticket.legs.length === 1
+                                ? 'Bet'
+                                : `Bets (${ticket.legs.length})`}
+                        </p>
                     </CardHeader>
-                    <CardContent className="space-y-3">
+                    <CardContent className="space-y-2">
                         {ticket.legs.map((leg) => (
                             <div
                                 key={leg.id}
-                                className="space-y-2 rounded-md border border-border p-3"
+                                className="space-y-2 rounded-xl border border-border bg-muted/30 p-3"
                             >
-                                <div className="flex items-center justify-between text-sm">
-                                    <span className="font-semibold uppercase">
+                                <div className="flex items-center justify-between gap-3">
+                                    <span className="text-[0.65rem] font-bold tracking-wider uppercase">
                                         {leg.bet_type_label}
                                     </span>
-                                    <span className="text-muted-foreground tabular-nums">
+                                    <span className="text-xs text-muted-foreground tabular-nums">
                                         {formatPeso(leg.amount)} →{' '}
-                                        {formatPeso(leg.potential_payout)}
+                                        <span className="font-bold text-foreground">
+                                            {formatPeso(leg.potential_payout)}
+                                        </span>
                                     </span>
                                 </div>
-                                <div className="flex flex-wrap items-center gap-2">
+                                <div className="flex flex-wrap items-center gap-1.5">
                                     {leg.numbers.map((n, i) => (
                                         <LottoBall
                                             key={i}
@@ -213,7 +245,7 @@ export default function TicketShow({ ticket }: { ticket: Ticket }) {
                                 {leg.payout !== null && (
                                     <p
                                         className={cn(
-                                            'text-xs font-semibold uppercase tabular-nums',
+                                            'text-xs font-bold tracking-wider uppercase tabular-nums',
                                             Number.parseFloat(leg.payout) > 0
                                                 ? 'text-success'
                                                 : 'text-muted-foreground',

@@ -1,4 +1,5 @@
 import { router } from '@inertiajs/react';
+import { ArrowRight } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { useCart } from '@/contexts/cart-context';
@@ -57,25 +58,32 @@ export default function PayTicketsBar() {
     };
 
     return (
-        <div className="sticky bottom-14 z-10 px-4 pb-2">
+        <div className="pointer-events-none sticky bottom-14 z-10 px-3 pb-2">
             <button
                 type="button"
                 onClick={pay}
                 disabled={processing}
+                aria-label={`Pay ${legs.length} ticket${legs.length === 1 ? '' : 's'} totalling ${formatPeso(totalAmount)}`}
                 className={cn(
-                    'flex w-full items-center gap-3 rounded-full bg-warning px-4 py-3 text-warning-foreground shadow-lg transition-opacity',
-                    processing && 'opacity-60',
+                    'pointer-events-auto group relative flex w-full items-center gap-3 overflow-hidden rounded-full bg-warning px-4 py-3 text-warning-foreground shadow-[0_4px_18px_-2px_oklch(0.75_0.16_75/0.55)] transition-all',
+                    'before:absolute before:inset-0 before:bg-[radial-gradient(circle_at_20%_-20%,oklch(1_0_0/0.35),transparent_55%)] before:opacity-80 before:transition-opacity',
+                    'active:scale-[0.98] active:shadow-[0_2px_8px_-2px_oklch(0.75_0.16_75/0.45)]',
+                    processing && 'opacity-70',
                 )}
             >
-                <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-warning-foreground/15 text-sm font-bold tabular-nums">
+                <span className="relative z-10 flex size-8 shrink-0 items-center justify-center rounded-full bg-warning-foreground/15 text-sm font-extrabold tabular-nums shadow-inner">
                     {legs.length}
                 </span>
-                <span className="flex-1 text-sm font-bold tracking-wide uppercase">
-                    {processing ? 'Placing…' : 'Pay tickets'}
+                <span className="relative z-10 flex-1 text-left text-sm font-bold tracking-wider uppercase">
+                    {processing ? 'Placing tickets…' : 'Pay tickets'}
                 </span>
-                <span className="text-base font-bold tabular-nums">
+                <span className="relative z-10 text-base font-extrabold tabular-nums">
                     {formatPeso(totalAmount)}
                 </span>
+                <ArrowRight
+                    className="relative z-10 size-4 transition-transform group-hover:translate-x-0.5"
+                    aria-hidden
+                />
             </button>
         </div>
     );

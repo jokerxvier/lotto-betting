@@ -33,3 +33,4 @@ yarn-error.log
 /.claude/scheduled_tasks.lock
 /lotto-home-snapshot.yml
 /results-page.png
+/polish-*.png
