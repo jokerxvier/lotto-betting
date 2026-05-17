@@ -19,11 +19,11 @@ it('redirects guests to /login', function () {
     $this->get('/lotto')->assertRedirect('/login');
 });
 
-it('bounces an incomplete telegram-only account to /auth/setup-pin', function () {
+it('lets a telegram-only account reach /lotto without forcing setup-pin', function () {
     $user = User::factory()->telegramOnly()->create();
     $this->actingAs($user);
 
-    $this->get('/lotto')->assertRedirect(route('auth.setup-pin'));
+    $this->get('/lotto')->assertOk();
 });
 
 it('renders both game cards with empty result/next-draw when no draws exist', function () {

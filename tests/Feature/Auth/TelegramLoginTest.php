@@ -8,7 +8,7 @@ beforeEach(function (): void {
     config()->set('services.telegram.bot_token', 'TEST-BOT-TOKEN');
 });
 
-it('creates a new user and redirects to setup-pin on first Telegram login', function () {
+it('creates a new user and redirects straight to /lotto on first Telegram login', function () {
     $payload = signTelegramPayload([
         'id' => 87654321,
         'first_name' => 'Jane',
@@ -18,7 +18,7 @@ it('creates a new user and redirects to setup-pin on first Telegram login', func
 
     $response = $this->post('/auth/telegram', $payload);
 
-    $response->assertRedirect(route('auth.setup-pin'));
+    $response->assertRedirect(route('lotto'));
     expect(User::query()->where('telegram_id', 87654321)->exists())->toBeTrue();
     $user = User::query()->where('telegram_id', 87654321)->firstOrFail();
     expect($user->name)->toBe('Jane')
@@ -82,8 +82,22 @@ it('rejects a payload missing required fields', function () {
     $this->assertGuest();
 });
 
-it('forces an incomplete user to /auth/setup-pin when visiting /lotto', function () {
+it('lets a Telegram-only user visit /lotto without forcing setup-pin', function () {
     $user = User::factory()->telegramOnly(87654321)->create();
+    $this->actingAs($user);
+
+    $this->get('/lotto')->assertOk();
+});
+
+it('still redirects a fully-incomplete user (no telegram, no pin) to /auth/setup-pin', function () {
+    // Defensive: a user with NO sign-in method (no telegram_id AND no
+    // username+pin_hash) should be forced to set up. Shouldn't happen via
+    // the normal flow but exercises the fallback branch.
+    $user = User::factory()->create([
+        'telegram_id' => null,
+        'username' => null,
+        'pin_hash' => null,
+    ]);
     $this->actingAs($user);
 
     $this->get('/lotto')->assertRedirect(route('auth.setup-pin'));

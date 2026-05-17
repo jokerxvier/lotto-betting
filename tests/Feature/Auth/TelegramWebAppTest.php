@@ -8,7 +8,7 @@ beforeEach(function (): void {
     config()->set('services.telegram.bot_token', 'TEST-BOT-TOKEN');
 });
 
-it('creates a new user from initData and redirects to setup-pin', function () {
+it('creates a new user from initData and redirects straight to /lotto', function () {
     $initData = signTelegramInitData([
         'id' => 87654321,
         'first_name' => 'Jane',
@@ -17,7 +17,7 @@ it('creates a new user from initData and redirects to setup-pin', function () {
 
     $response = $this->post('/auth/telegram/web-app', ['init_data' => $initData]);
 
-    $response->assertRedirect(route('auth.setup-pin'));
+    $response->assertRedirect(route('lotto'));
 
     $user = User::query()->where('telegram_id', 87654321)->firstOrFail();
     expect($user->name)->toBe('Jane')

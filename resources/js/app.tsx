@@ -58,6 +58,12 @@ bootTelegramWebApp();
  * next page load skips this branch.
  */
 function bootTelegramWebApp(): void {
+    // SSR (Inertia warm-up runs in Node) has no `window`. Bail before any
+    // browser-only access.
+    if (typeof window === 'undefined') {
+        return;
+    }
+
     const webApp = window.Telegram?.WebApp;
 
     if (!webApp?.initData) {

@@ -50,10 +50,8 @@ final class TelegramWebAppController extends Controller
         Auth::login($user);
         $request->session()->regenerate();
 
-        if ($user->username === null || $user->pin_hash === null) {
-            return redirect()->route('auth.setup-pin');
-        }
-
+        // Telegram identity is enough — no forced setup-pin. Users can opt
+        // in to a backup username + PIN later from /auth/setup-pin.
         return redirect()->intended(route('lotto'));
     }
 }
