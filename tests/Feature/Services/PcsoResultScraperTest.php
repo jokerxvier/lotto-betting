@@ -98,3 +98,87 @@ it('returns null when the configured source has no driver', function () {
     expect($this->scraper->fetchLatest('2d', Carbon::create(2026, 5, 18, 17)))->toBeNull();
     Http::assertNothingSent();
 });
+
+// ── Playwright sidecar fetcher branch ────────────────────────────────────────
+
+function fakePlaywrightSidecar(array $rows = []): void
+{
+    config()->set('lotto.scraper.source', 'pcso_gov');
+    config()->set('lotto.scraper.fetcher', 'playwright');
+    config()->set('lotto.scraper.sidecar_url', 'http://127.0.0.1:8787');
+    config()->set('lotto.scraper.sidecar_token', 'test-token');
+
+    Http::fake([
+        '127.0.0.1:8787/scrape*' => Http::response([
+            'source' => 'pcso.gov.ph',
+            'fetchedAt' => '2026-05-17T13:00:00.000Z',
+            'rows' => $rows,
+        ], 200),
+    ]);
+}
+
+it('routes through the Playwright sidecar when fetcher=playwright', function () {
+    fakePlaywrightSidecar([
+        ['game' => '2D Lotto 5PM', 'date' => '5/17/2026', 'numbers' => [10, 28]],
+        ['game' => '3D Lotto 9PM', 'date' => '5/17/2026', 'numbers' => [4, 3, 1]],
+    ]);
+
+    // 5/17/2026 5PM Manila = 9:00 UTC
+    $drawAt = Carbon::create(2026, 5, 17, 17, 0, 0, 'Asia/Manila')->setTimezone('UTC');
+
+    expect($this->scraper->fetchLatest('2d', $drawAt))->toBe([10, 28]);
+
+    Http::assertSent(fn ($req): bool => $req->hasHeader('X-Scraper-Token', 'test-token')
+        && str_contains($req->url(), '127.0.0.1:8787/scrape'));
+});
+
+it('only hits the sidecar once per cache window for the whole loop', function () {
+    fakePlaywrightSidecar([
+        ['game' => '2D Lotto 5PM', 'date' => '5/17/2026', 'numbers' => [10, 28]],
+        ['game' => '3D Lotto 9PM', 'date' => '5/17/2026', 'numbers' => [4, 3, 1]],
+    ]);
+
+    $a = Carbon::create(2026, 5, 17, 17, 0, 0, 'Asia/Manila')->setTimezone('UTC');
+    $b = Carbon::create(2026, 5, 17, 21, 0, 0, 'Asia/Manila')->setTimezone('UTC');
+
+    expect($this->scraper->fetchLatest('2d', $a))->toBe([10, 28])
+        ->and($this->scraper->fetchLatest('3d', $b))->toBe([4, 3, 1]);
+
+    Http::assertSentCount(1);
+});
+
+it('returns null when the sidecar has no matching row', function () {
+    fakePlaywrightSidecar([
+        ['game' => '2D Lotto 2PM', 'date' => '5/17/2026', 'numbers' => [1, 2]],
+    ]);
+
+    // ask for the 5PM row — sidecar only returned 2PM
+    $drawAt = Carbon::create(2026, 5, 17, 17, 0, 0, 'Asia/Manila')->setTimezone('UTC');
+    expect($this->scraper->fetchLatest('2d', $drawAt))->toBeNull();
+});
+
+it('returns null when the sidecar fails', function () {
+    config()->set('lotto.scraper.source', 'pcso_gov');
+    config()->set('lotto.scraper.fetcher', 'playwright');
+    config()->set('lotto.scraper.sidecar_url', 'http://127.0.0.1:8787');
+    config()->set('lotto.scraper.sidecar_token', 'test-token');
+
+    Http::fake([
+        '127.0.0.1:8787/*' => Http::response(['error' => 'upstream_failure'], 502),
+    ]);
+
+    $drawAt = Carbon::create(2026, 5, 17, 17, 0, 0, 'Asia/Manila')->setTimezone('UTC');
+    expect($this->scraper->fetchLatest('2d', $drawAt))->toBeNull();
+});
+
+it('refuses to use the playwright fetcher with a non-pcso_gov source', function () {
+    // misconfig: lottopcso source + playwright fetcher — JSON shape mismatch
+    config()->set('lotto.scraper.source', 'lottopcso');
+    config()->set('lotto.scraper.fetcher', 'playwright');
+    Http::fake(); // any call would explode the test
+
+    $drawAt = Carbon::create(2026, 5, 17, 17, 0, 0, 'Asia/Manila')->setTimezone('UTC');
+    expect($this->scraper->fetchLatest('2d', $drawAt))->toBeNull();
+
+    Http::assertNothingSent();
+});

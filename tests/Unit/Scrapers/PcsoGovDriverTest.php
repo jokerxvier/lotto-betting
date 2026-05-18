@@ -109,3 +109,73 @@ it('returns null on completely malformed input', function () {
     expect((new PcsoGovDriver)->parse('<html>no table</html>', '2d', manilaDrawAt(2026, 5, 17, 17)))
         ->toBeNull();
 });
+
+// ── pickFromRows() — the Playwright-sidecar JSON path ────────────────────────
+
+/** @return list<array{game:string,date:string,numbers:list<int>}> */
+function sidecarRowsFromFixture(): array
+{
+    // Same source-of-truth as the HTML fixture. Hand-rolled to mirror what
+    // scraper/parse.mjs would extract from searchlottoresult.html.
+    return [
+        ['game' => 'Ultra Lotto 6/58', 'date' => '5/17/2026', 'numbers' => [39, 37, 35, 45, 16, 52]],
+        ['game' => '3D Lotto 2PM', 'date' => '5/17/2026', 'numbers' => [5, 1, 9]],
+        ['game' => '3D Lotto 5PM', 'date' => '5/17/2026', 'numbers' => [2, 5, 5]],
+        ['game' => '3D Lotto 9PM', 'date' => '5/17/2026', 'numbers' => [4, 3, 1]],
+        ['game' => '2D Lotto 2PM', 'date' => '5/17/2026', 'numbers' => [10, 9]],
+        ['game' => '2D Lotto 5PM', 'date' => '5/17/2026', 'numbers' => [10, 28]],
+        ['game' => '2D Lotto 9PM', 'date' => '5/17/2026', 'numbers' => [29, 19]],
+        ['game' => '2D Lotto 2PM', 'date' => '5/16/2026', 'numbers' => [10, 12]],
+        ['game' => '2D Lotto 9PM', 'date' => '5/16/2026', 'numbers' => [3, 6]],
+        ['game' => '3D Lotto 2PM', 'date' => '5/16/2026', 'numbers' => [0, 6, 9]],
+        ['game' => '2D Lotto 5PM', 'date' => '5/15/2026', 'numbers' => [13, 8]],
+        ['game' => '3D Lotto 9PM', 'date' => '5/15/2026', 'numbers' => [6, 6, 0]],
+    ];
+}
+
+it('picks the matching row from a sidecar JSON payload', function (
+    string $game,
+    int $hour,
+    int $day,
+    array $expected,
+) {
+    $numbers = (new PcsoGovDriver)
+        ->pickFromRows(sidecarRowsFromFixture(), $game, manilaDrawAt(2026, 5, $day, $hour));
+
+    expect($numbers)->toBe($expected);
+})->with([
+    '2D 2PM 5/17' => ['2d', 14, 17, [10, 9]],
+    '2D 5PM 5/17' => ['2d', 17, 17, [10, 28]],
+    '2D 9PM 5/17' => ['2d', 21, 17, [29, 19]],
+    '3D 2PM 5/17' => ['3d', 14, 17, [5, 1, 9]],
+    '3D 9PM 5/17' => ['3d', 21, 17, [4, 3, 1]],
+    '2D 2PM 5/16' => ['2d', 14, 16, [10, 12]],
+    '3D 9PM 5/15' => ['3d', 21, 15, [6, 6, 0]],
+]);
+
+it('pickFromRows returns null when no row matches the date/slot', function () {
+    // 5/18 isn't in the rows
+    $rows = sidecarRowsFromFixture();
+    expect((new PcsoGovDriver)->pickFromRows($rows, '2d', manilaDrawAt(2026, 5, 18, 17)))
+        ->toBeNull();
+});
+
+it('pickFromRows returns null for unsupported game codes', function () {
+    $rows = sidecarRowsFromFixture();
+    expect((new PcsoGovDriver)->pickFromRows($rows, '6d', manilaDrawAt(2026, 5, 17, 21)))
+        ->toBeNull();
+});
+
+it('pickFromRows returns null when the matched row has the wrong number count', function () {
+    $broken = [
+        ['game' => '2D Lotto 5PM', 'date' => '5/17/2026', 'numbers' => [10, 28, 99]], // 3 ints for a 2D row
+    ];
+
+    expect((new PcsoGovDriver)->pickFromRows($broken, '2d', manilaDrawAt(2026, 5, 17, 17)))
+        ->toBeNull();
+});
+
+it('pickFromRows returns null on empty rows', function () {
+    expect((new PcsoGovDriver)->pickFromRows([], '2d', manilaDrawAt(2026, 5, 17, 17)))
+        ->toBeNull();
+});

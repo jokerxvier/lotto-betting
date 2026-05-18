@@ -42,5 +42,13 @@ return [
         'source_label' => env('LOTTO_SCRAPER_SOURCE_LABEL', 'lottopcso.com'),
         'cache_ttl_seconds' => (int) env('LOTTO_SCRAPER_CACHE_TTL', 60),
         'http_timeout_seconds' => (int) env('LOTTO_SCRAPER_HTTP_TIMEOUT', 8),
+
+        // Fetcher: 'http' (default — plain Guzzle, for any non-WAF source) or
+        // 'playwright' (calls the standalone scraper/ sidecar at sidecar_url,
+        // required for pcso.gov.ph since it sits behind Akamai bot-WAF).
+        'fetcher' => env('LOTTO_SCRAPER_FETCHER', 'http'),
+        'sidecar_url' => env('LOTTO_SCRAPER_SIDECAR_URL', 'http://127.0.0.1:8787'),
+        'sidecar_token' => env('LOTTO_SCRAPER_SIDECAR_TOKEN', ''),
+        'sidecar_timeout_seconds' => (int) env('LOTTO_SCRAPER_SIDECAR_TIMEOUT', 30),
     ],
 ];

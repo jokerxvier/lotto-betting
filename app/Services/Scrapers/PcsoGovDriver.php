@@ -37,29 +37,11 @@ final class PcsoGovDriver implements ScraperDriver
 
     public function parse(string $body, string $gameCode, CarbonInterface $drawAt): ?array
     {
-        $game = strtolower($gameCode);
-        $expected = match ($game) {
-            '2d' => 2,
-            '3d' => 3,
-            default => null,
-        };
-        if ($expected === null) {
+        $matchKey = $this->matchKeyFor($gameCode, $drawAt);
+        if ($matchKey === null) {
             return null;
         }
-
-        $manila = $drawAt->copy()->setTimezone('Asia/Manila');
-        $slot = match ($manila->hour) {
-            14 => '2PM',
-            17 => '5PM',
-            21 => '9PM',
-            default => null,
-        };
-        if ($slot === null) {
-            return null;
-        }
-
-        $label = strtoupper($game).' LOTTO '.$slot;
-        $date = $manila->format('n/j/Y');
+        [$expected, $label, $date] = $matchKey;
 
         $rows = preg_split('/<\/tr>/i', $body) ?: [];
 
@@ -97,5 +79,72 @@ final class PcsoGovDriver implements ScraperDriver
     public function label(): string
     {
         return 'pcso.gov.ph';
+    }
+
+    /**
+     * Pick the matching draw row from a pre-parsed JSON payload (the
+     * Playwright sidecar's `/scrape` output). Same {game, slot, date}
+     * match logic as parse(), but consumes structured rows so we don't
+     * re-parse HTML for every awaiting draw.
+     *
+     * @param  list<array{game:string, date:string, numbers:list<int>}>  $rows
+     * @return list<int>|null
+     */
+    public function pickFromRows(array $rows, string $gameCode, CarbonInterface $drawAt): ?array
+    {
+        $matchKey = $this->matchKeyFor($gameCode, $drawAt);
+        if ($matchKey === null) {
+            return null;
+        }
+        [$expected, $label, $date] = $matchKey;
+
+        foreach ($rows as $row) {
+            if (strtoupper($row['game']) !== $label) {
+                continue;
+            }
+            if ($row['date'] !== $date) {
+                continue;
+            }
+            if (count($row['numbers']) !== $expected) {
+                return null;
+            }
+
+            return array_values($row['numbers']);
+        }
+
+        return null;
+    }
+
+    /**
+     * Derive the {expected_count, "2D LOTTO 5PM", "5/17/2026"} tuple used
+     * by both parse() and pickFromRows(). Returns null when the game
+     * code is unsupported or the draw_at hour is not a real PCSO slot.
+     *
+     * @return array{int, string, string}|null
+     */
+    private function matchKeyFor(string $gameCode, CarbonInterface $drawAt): ?array
+    {
+        $game = strtolower($gameCode);
+        $expected = match ($game) {
+            '2d' => 2,
+            '3d' => 3,
+            default => null,
+        };
+        if ($expected === null) {
+            return null;
+        }
+
+        $manila = $drawAt->copy()->setTimezone('Asia/Manila');
+        $slot = match ($manila->hour) {
+            14 => '2PM',
+            17 => '5PM',
+            21 => '9PM',
+            default => null,
+        };
+        if ($slot === null) {
+            return null;
+        }
+
+        return [$expected, strtoupper($game).' LOTTO '.$slot, $manila->format('n/j/Y')];
     }
 }
