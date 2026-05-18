@@ -17,6 +17,13 @@ class DatabaseSeeder extends Seeder
 
         if (! app()->isProduction()) {
             $this->call(DevFixturesSeeder::class);
+
+            // DevFixturesSeeder only seeds users + wallets. Draws come
+            // from the existing crons; remind devs how to populate them.
+            $this->command?->info(
+                'Next: php artisan draws:generate-upcoming --days=7  '
+                .'(real 2/5/9 PM slots).',
+            );
         }
     }
 }
