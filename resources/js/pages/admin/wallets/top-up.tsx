@@ -24,7 +24,7 @@ export default function AdminWalletTopUp({ idempotency_key }: Props) {
                     description="Credit a user's wallet by their 8-character wallet code."
                 />
 
-                <Card className="max-w-xl">
+                <Card>
                     <CardHeader>
                         <CardTitle>New top-up</CardTitle>
                     </CardHeader>

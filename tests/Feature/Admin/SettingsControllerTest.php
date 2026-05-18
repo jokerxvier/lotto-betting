@@ -20,6 +20,7 @@ it('forbids non-admins from updating settings', function () {
     $this->actingAs($u)->post('/admin/settings', [
         'suggestions_enabled' => false,
         'auto_publish_enabled' => false,
+        'push_enabled' => false,
     ])->assertForbidden();
 });
 
@@ -33,6 +34,7 @@ it('renders current settings with sane defaults', function () {
             ->component('admin/settings/index')
             ->where('settings.suggestions_enabled', true)
             ->where('settings.auto_publish_enabled', false)
+            ->where('settings.push_enabled', true)
             ->has('source_label')
         );
 });
@@ -44,6 +46,7 @@ it('allows flipping suggestions_enabled without confirmation', function () {
         ->post('/admin/settings', [
             'suggestions_enabled' => false,
             'auto_publish_enabled' => false,
+            'push_enabled' => true,
         ])
         ->assertRedirect(route('admin.settings.edit'))
         ->assertSessionHas('status');
@@ -59,6 +62,7 @@ it('refuses to flip auto_publish_enabled ON without confirm_auto_publish=true', 
         ->post('/admin/settings', [
             'suggestions_enabled' => true,
             'auto_publish_enabled' => true,
+            'push_enabled' => true,
             // confirm_auto_publish missing
         ])
         ->assertSessionHasErrors('confirm_auto_publish');
@@ -74,6 +78,7 @@ it('accepts auto_publish_enabled ON when confirm_auto_publish=true', function ()
             'suggestions_enabled' => true,
             'auto_publish_enabled' => true,
             'confirm_auto_publish' => true,
+            'push_enabled' => true,
         ])
         ->assertRedirect(route('admin.settings.edit'))
         ->assertSessionHas('status');
@@ -89,8 +94,23 @@ it('lets admin flip auto_publish back off without confirmation', function () {
         ->post('/admin/settings', [
             'suggestions_enabled' => true,
             'auto_publish_enabled' => false,
+            'push_enabled' => true,
         ])
         ->assertRedirect(route('admin.settings.edit'));
 
     expect((new SettingsService)->get('scraper.auto_publish_enabled'))->toBeFalse();
+});
+
+it('flips push_enabled', function () {
+    $admin = User::factory()->admin()->withWallet()->create();
+
+    $this->actingAs($admin)
+        ->post('/admin/settings', [
+            'suggestions_enabled' => true,
+            'auto_publish_enabled' => false,
+            'push_enabled' => false,
+        ])
+        ->assertRedirect(route('admin.settings.edit'));
+
+    expect((new SettingsService)->get('telegram.push_enabled'))->toBeFalse();
 });

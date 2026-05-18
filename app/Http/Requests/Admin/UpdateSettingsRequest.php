@@ -34,6 +34,7 @@ final class UpdateSettingsRequest extends FormRequest
                 Rule::requiredIf(fn (): bool => (bool) $this->boolean('auto_publish_enabled')),
                 'accepted_if:auto_publish_enabled,true',
             ],
+            'push_enabled' => ['required', 'boolean'],
         ];
     }
 }

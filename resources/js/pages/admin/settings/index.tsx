@@ -1,5 +1,5 @@
 import { Head, router, usePage } from '@inertiajs/react';
-import { AlertTriangle, CheckCircle2, Sparkles } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Send, Sparkles } from 'lucide-react';
 import { useState } from 'react';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
@@ -26,6 +26,7 @@ type Props = {
     settings: {
         suggestions_enabled: boolean;
         auto_publish_enabled: boolean;
+        push_enabled: boolean;
     };
     source_label: string;
 };
@@ -46,13 +47,15 @@ export default function AdminSettings({ settings, source_label }: Props) {
     const [autoPublishEnabled, setAutoPublishEnabled] = useState(
         settings.auto_publish_enabled,
     );
+    const [pushEnabled, setPushEnabled] = useState(settings.push_enabled);
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [confirmText, setConfirmText] = useState('');
     const [processing, setProcessing] = useState(false);
 
     const dirty =
         suggestionsEnabled !== settings.suggestions_enabled ||
-        autoPublishEnabled !== settings.auto_publish_enabled;
+        autoPublishEnabled !== settings.auto_publish_enabled ||
+        pushEnabled !== settings.push_enabled;
 
     const turningAutoPublishOn =
         autoPublishEnabled && !settings.auto_publish_enabled;
@@ -66,6 +69,7 @@ export default function AdminSettings({ settings, source_label }: Props) {
                 suggestions_enabled: suggestionsEnabled,
                 auto_publish_enabled: autoPublishEnabled,
                 confirm_auto_publish: confirmAutoPublish,
+                push_enabled: pushEnabled,
             },
             {
                 preserveScroll: true,
@@ -172,6 +176,38 @@ export default function AdminSettings({ settings, source_label }: Props) {
                             />
                             <span className="select-none">
                                 {autoPublishEnabled ? 'On' : 'Off'}
+                            </span>
+                        </label>
+                    </CardHeader>
+                </Card>
+
+                <Card>
+                    <CardHeader className="flex flex-row items-start gap-3 space-y-0">
+                        <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-success/10 text-success">
+                            <Send className="size-5" />
+                        </div>
+                        <div className="flex-1">
+                            <CardTitle className="text-base">
+                                Telegram push
+                            </CardTitle>
+                            <CardDescription>
+                                DM every winning user via the bot after each
+                                draw settles. Off = no DMs at all.
+                            </CardDescription>
+                        </div>
+                        <label
+                            htmlFor="push_enabled"
+                            className="flex shrink-0 items-center gap-2 text-sm font-semibold"
+                        >
+                            <Checkbox
+                                id="push_enabled"
+                                checked={pushEnabled}
+                                onCheckedChange={(v) =>
+                                    setPushEnabled(v === true)
+                                }
+                            />
+                            <span className="select-none">
+                                {pushEnabled ? 'On' : 'Off'}
                             </span>
                         </label>
                     </CardHeader>

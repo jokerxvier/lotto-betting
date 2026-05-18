@@ -33,6 +33,10 @@ final class SettingsController extends Controller
                     'scraper.auto_publish_enabled',
                     false,
                 ),
+                'push_enabled' => (bool) $settings->get(
+                    'telegram.push_enabled',
+                    true,
+                ),
             ],
             'source_label' => (string) config(
                 'lotto.scraper.source_label',
@@ -52,6 +56,10 @@ final class SettingsController extends Controller
         $settings->set(
             'scraper.auto_publish_enabled',
             (bool) $request->boolean('auto_publish_enabled'),
+        );
+        $settings->set(
+            'telegram.push_enabled',
+            (bool) $request->boolean('push_enabled'),
         );
 
         return redirect()

@@ -16,6 +16,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 #[Fillable([
     'name',
     'telegram_id',
+    'telegram_notifications_enabled',
     'username',
     'pin_hash',
     'password',
@@ -48,6 +49,7 @@ class User extends Authenticatable
             'pin_hash' => 'hashed',
             'password' => 'hashed',
             'is_admin' => 'boolean',
+            'telegram_notifications_enabled' => 'boolean',
             'locked_until' => 'datetime',
         ];
     }

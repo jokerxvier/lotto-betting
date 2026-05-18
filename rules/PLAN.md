@@ -213,7 +213,7 @@ GET   /admin/games               → Manage games + bet types + payouts (dual-co
 - ✅ Advance betting — `LottoHomeController` now passes `upcoming_draws[]` (next-7-day window of scheduled draws past their `cutoff_at` filter, ordered by `cutoff_at`) per game alongside `next_draw_*`. New `SelectDrawSheet` (shadcn `Sheet`) lists future draws as full-width buttons. ADVANCE button on `GameCard` opens it; picking a row binds a controlled `BetSheet` (new `targetDraw` prop + controlled `open`/`onOpenChange`) to the chosen draw. Cart already supports cross-draw legs — server-side `PlaceCartRequest` validates per-leg `draw_id` and `PlaceBetAction` enforces cutoff per draw, so no backend changes were needed beyond the upcoming-draws payload.
 - ⬜ Idempotency + race tests under load (k6 or Locust).
 - ⬜ Audit log surface in admin.
-- ⬜ Telegram bot for draw-result push.
+- ✅ Telegram bot for draw-result push — queued `App\Listeners\NotifyUsersOfSettledDraw` subscribed to `DrawSettled`. Groups winning bets by user (one DM per user per draw, summed payout) and sends via `App\Services\Telegram\TelegramBotClient` with an `Open Lotto PH` inline button to `t.me/<bot>`. Three kill-switches: per-user `users.telegram_notifications_enabled` (default ON), global `SettingsService` toggle `telegram.push_enabled` (default ON, flipped at `/admin/settings`), and empty bot token (no-op). `tries=3` + `backoff=[30,90,300]` so Telegram blips retry but excess failures dead-letter. Listener requires `php artisan queue:work` running (Forge → Daemons → enable). `App\Services\Telegram\MarkdownV2::escape` keeps dynamic message values safe from parser breakage.
 - ⬜ Polish + accessibility pass.
 
 ### Phase 3 — Payments (3–4 weeks)
