@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Services\Scrapers\LottopcsoDriver;
+use App\Services\Scrapers\PcsoGovDriver;
 use App\Services\Scrapers\ScraperDriver;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\Cache;
@@ -102,6 +103,7 @@ final class PcsoResultScraper
     {
         return match ((string) config('lotto.scraper.source', 'lottopcso')) {
             'lottopcso' => new LottopcsoDriver,
+            'pcso_gov' => new PcsoGovDriver,
             default => null,
         };
     }
