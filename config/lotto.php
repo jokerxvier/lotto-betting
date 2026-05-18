@@ -38,6 +38,10 @@ return [
     | behaves when enabled, not whether it's enabled at all.
     */
     'scraper' => [
+        // Source driver: 'gma' (recommended — gmanetwork.com, plain HTTP, no
+        // WAF/blocks), 'lottopcso' (legacy — blocked from PH ISPs by CICC
+        // DNS), or 'pcso_gov' (official — behind Akamai bot-WAF, requires
+        // the Playwright sidecar fetcher).
         'source' => env('LOTTO_SCRAPER_SOURCE', 'lottopcso'),
         'source_label' => env('LOTTO_SCRAPER_SOURCE_LABEL', 'lottopcso.com'),
         'cache_ttl_seconds' => (int) env('LOTTO_SCRAPER_CACHE_TTL', 60),

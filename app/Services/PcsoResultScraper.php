@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Services\Scrapers\GmaNetworkDriver;
 use App\Services\Scrapers\LottopcsoDriver;
 use App\Services\Scrapers\PcsoGovDriver;
 use App\Services\Scrapers\PlaywrightSidecarClient;
@@ -187,6 +188,7 @@ final class PcsoResultScraper
         return match ((string) config('lotto.scraper.source', 'lottopcso')) {
             'lottopcso' => new LottopcsoDriver,
             'pcso_gov' => new PcsoGovDriver,
+            'gma' => new GmaNetworkDriver,
             default => null,
         };
     }

@@ -26,10 +26,14 @@ if (TOKEN === '') {
 const app = express();
 
 app.use((req, res, next) => {
-    if (req.path === '/health') return next();
+    if (req.path === '/health') {
+return next();
+}
+
     if (req.header('x-scraper-token') !== TOKEN) {
         return res.status(401).json({ error: 'unauthorized' });
     }
+
     next();
 });
 

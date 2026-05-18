@@ -182,3 +182,20 @@ it('refuses to use the playwright fetcher with a non-pcso_gov source', function 
 
     Http::assertNothingSent();
 });
+
+// ── GMA Network source (default production source) ───────────────────────────
+
+it('parses numbers via the gma source end-to-end', function () {
+    config()->set('lotto.scraper.source', 'gma');
+    Http::fake([
+        'gmanetwork.com/*' => Http::response(
+            (string) file_get_contents(__DIR__.'/../../fixtures/gma/lotto-listing-2026-05-17.html'),
+            200,
+        ),
+    ]);
+
+    // 5/17/2026 5PM Manila → 9:00 UTC. GMA listing has it as "10 28".
+    $drawAt = Carbon::create(2026, 5, 17, 17, 0, 0, 'Asia/Manila')->setTimezone('UTC');
+
+    expect($this->scraper->fetchLatest('2d', $drawAt))->toBe([10, 28]);
+});

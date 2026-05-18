@@ -117,6 +117,9 @@ export default [
             'resources/js/components/ui/*',
             'resources/js/routes/**',
             'resources/js/wayfinder/**',
+            // Standalone Node workspace with its own package.json + own
+            // concerns — don't apply the main app's browser-globals lint to it.
+            'scraper/**',
         ],
     },
     prettier, // Turn off all rules that might conflict with Prettier

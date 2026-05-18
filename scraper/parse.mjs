@@ -17,12 +17,19 @@ const GAME_ROW_PATTERN = /^(2D|3D|4D|6D)\s+LOTTO(?:\s+(\d{1,2}PM))?$/i;
  */
 export function parseGridDom() {
     const grid = document.querySelector('#cphContainer_cpContent_GridView1');
-    if (!grid) return [];
+
+    if (!grid) {
+return [];
+}
 
     const rows = [];
+
     for (const tr of grid.querySelectorAll('tr')) {
         const tds = tr.querySelectorAll('td');
-        if (tds.length < 5) continue; // header row uses <th>, gets skipped
+
+        if (tds.length < 5) {
+continue;
+} // header row uses <th>, gets skipped
 
         const game = tds[0].textContent.trim();
         const combinations = tds[1].textContent.trim();
@@ -35,10 +42,13 @@ export function parseGridDom() {
             .map((n) => parseInt(n, 10))
             .filter((n) => Number.isFinite(n));
 
-        if (numbers.length === 0) continue;
+        if (numbers.length === 0) {
+continue;
+}
 
         rows.push({ game, date, numbers, jackpot, winners: Number.isFinite(winners) ? winners : null });
     }
+
     return rows;
 }
 
@@ -48,13 +58,20 @@ export function parseGridDom() {
  */
 export function parseGridHtml(html) {
     const tableMatch = html.match(/<table[^>]*id=["']cphContainer_cpContent_GridView1["'][^>]*>([\s\S]*?)<\/table>/i);
-    if (!tableMatch) return [];
+
+    if (!tableMatch) {
+return [];
+}
 
     const rows = [];
     const rowParts = tableMatch[1].split(/<\/tr>/i);
+
     for (const part of rowParts) {
         const cellMatches = [...part.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)];
-        if (cellMatches.length < 5) continue;
+
+        if (cellMatches.length < 5) {
+continue;
+}
 
         const cells = cellMatches.map((m) => m[1].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim());
         const [game, combinations, date, jackpot, winnersText] = cells;
@@ -64,11 +81,17 @@ export function parseGridHtml(html) {
             .map((n) => parseInt(n, 10))
             .filter((n) => Number.isFinite(n));
 
-        if (numbers.length === 0) continue;
-        if (!GAME_ROW_PATTERN.test(game) && !/lotto/i.test(game)) continue;
+        if (numbers.length === 0) {
+continue;
+}
+
+        if (!GAME_ROW_PATTERN.test(game) && !/lotto/i.test(game)) {
+continue;
+}
 
         const winners = parseInt(winnersText, 10);
         rows.push({ game, date, numbers, jackpot, winners: Number.isFinite(winners) ? winners : null });
     }
+
     return rows;
 }

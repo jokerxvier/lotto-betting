@@ -46,16 +46,19 @@ async function ensurePage() {
     });
 
     page = await context.newPage();
+
     return page;
 }
 
 async function scrapeOnce() {
     const p = await ensurePage();
+
     try {
         await p.goto(TARGET_URL, { waitUntil: 'networkidle', timeout: NAV_TIMEOUT_MS });
         await p.waitForSelector('#cphContainer_cpContent_GridView1', {
             timeout: SELECTOR_TIMEOUT_MS,
         });
+
         return await p.evaluate(parseGridDom);
     } catch (err) {
         // Burn the page so the next call gets a fresh one. Keep browser alive.
@@ -64,7 +67,9 @@ async function scrapeOnce() {
         } catch {
             /* swallow */
         }
+
         page = null;
+
         throw err;
     }
 }
@@ -75,12 +80,14 @@ async function scrapeOnce() {
  */
 export async function getLatestResults({ refresh = false } = {}) {
     const now = Date.now();
+
     if (!refresh && cache.rows && now - cache.fetchedAt < CACHE_TTL_MS) {
         return { fetchedAt: new Date(cache.fetchedAt).toISOString(), rows: cache.rows };
     }
 
     const rows = await scrapeOnce();
     cache = { fetchedAt: now, rows };
+
     return { fetchedAt: new Date(now).toISOString(), rows };
 }
 
@@ -90,16 +97,19 @@ export async function shutdown() {
     } catch {
         /* swallow */
     }
+
     try {
         await context?.close();
     } catch {
         /* swallow */
     }
+
     try {
         await browser?.close();
     } catch {
         /* swallow */
     }
+
     page = null;
     context = null;
     browser = null;
