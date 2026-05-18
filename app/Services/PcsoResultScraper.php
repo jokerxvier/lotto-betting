@@ -7,6 +7,8 @@ namespace App\Services;
 use App\Services\Scrapers\GmaNetworkDriver;
 use App\Services\Scrapers\LottopcsoDriver;
 use App\Services\Scrapers\PcsoGovDriver;
+use App\Services\Scrapers\PcsoParserApiClient;
+use App\Services\Scrapers\PcsoParserApiDriver;
 use App\Services\Scrapers\PlaywrightSidecarClient;
 use App\Services\Scrapers\ScraperDriver;
 use Carbon\CarbonInterface;
@@ -31,11 +33,15 @@ use Throwable;
  * Driver-pattern: source-specific HTML parsing lives in App\Services\Scrapers\*.
  * Add a new driver to swap sources without touching this class.
  *
- * Two fetcher modes (set via LOTTO_SCRAPER_FETCHER):
+ * Three fetcher modes (set via LOTTO_SCRAPER_FETCHER):
  *  - 'http' (default)       — plain Http::get; works for any non-WAF source.
  *  - 'playwright'           — pcso.gov.ph via the standalone scraper/ sidecar
  *                             (Node + Playwright daemon on 127.0.0.1). Only
  *                             compatible with the `pcso_gov` source driver.
+ *  - 'pcso_api'             — the standalone pcso-parser REST API (Node + Chromium
+ *                             daemon, typically 127.0.0.1:3001). Only compatible
+ *                             with the `pcso_api` source driver. Lookup is by
+ *                             stable `_id` (YYYY-MM-DD-<game>-<HHMMAM/PM>).
  */
 final class PcsoResultScraper
 {
@@ -59,9 +65,11 @@ final class PcsoResultScraper
             return null;
         }
 
-        return $this->fetcherKind() === 'playwright'
-            ? $this->fetchViaPlaywright($driver, $gameCode, $drawAt)
-            : $this->fetchViaHttp($driver, $gameCode, $drawAt);
+        return match ($this->fetcherKind()) {
+            'playwright' => $this->fetchViaPlaywright($driver, $gameCode, $drawAt),
+            'pcso_api' => $this->fetchViaPcsoApi($driver, $gameCode, $drawAt),
+            default => $this->fetchViaHttp($driver, $gameCode, $drawAt),
+        };
     }
 
     public function sourceLabel(): string
@@ -176,11 +184,71 @@ final class PcsoResultScraper
         );
     }
 
+    /**
+     * @return list<int>|null
+     */
+    private function fetchViaPcsoApi(ScraperDriver $driver, string $gameCode, CarbonInterface $drawAt): ?array
+    {
+        if (! $driver instanceof PcsoParserApiDriver) {
+            // The pcso_api fetcher consumes the API's JSON shape via the
+            // driver's pickFromRows(). Any other driver wouldn't know how
+            // to route. Loud failure beats silent confusion.
+            $this->logFailure('pcso_api_requires_pcso_api_driver', $gameCode, $drawAt);
+
+            return null;
+        }
+
+        $manila = $drawAt->copy()->setTimezone('Asia/Manila');
+        $isoDate = $manila->format('Y-m-d');
+
+        try {
+            $rows = $this->cachedPcsoApiRows($isoDate);
+        } catch (Throwable $e) {
+            $this->logFailure($e->getMessage(), $gameCode, $drawAt);
+
+            return null;
+        }
+
+        $numbers = $driver->pickFromRows($rows, $gameCode, $drawAt);
+        if ($numbers === null) {
+            $this->logFailure('no_match_in_pcso_api_rows', $gameCode, $drawAt);
+
+            return null;
+        }
+
+        return $numbers;
+    }
+
+    /**
+     * @return list<array{_id:string, game:string, date:string, winning:string, prize?:string, winners?:string, time?:string}>
+     */
+    private function cachedPcsoApiRows(string $isoDate): array
+    {
+        $ttl = (int) config('lotto.scraper.cache_ttl_seconds', 60);
+
+        /** @var list<array{_id:string, game:string, date:string, winning:string, prize?:string, winners?:string, time?:string}> $rows */
+        $rows = Cache::remember(
+            "lotto.scraper:pcso_api_rows:{$isoDate}",
+            $ttl,
+            fn (): array => $this->pcsoApiClient()->fetchFor($isoDate),
+        );
+
+        return $rows;
+    }
+
+    private function pcsoApiClient(): PcsoParserApiClient
+    {
+        return new PcsoParserApiClient(
+            baseUrl: (string) config('lotto.scraper.api_url', 'http://127.0.0.1:3001'),
+            timeoutSeconds: (int) config('lotto.scraper.api_timeout_seconds', 60),
+        );
+    }
+
     private function fetcherKind(): string
     {
         $kind = (string) config('lotto.scraper.fetcher', 'http');
 
-        return in_array($kind, ['http', 'playwright'], true) ? $kind : 'http';
+        return in_array($kind, ['http', 'playwright', 'pcso_api'], true) ? $kind : 'http';
     }
 
     private function resolveDriver(): ?ScraperDriver
@@ -189,6 +257,7 @@ final class PcsoResultScraper
             'lottopcso' => new LottopcsoDriver,
             'pcso_gov' => new PcsoGovDriver,
             'gma' => new GmaNetworkDriver,
+            'pcso_api' => new PcsoParserApiDriver,
             default => null,
         };
     }

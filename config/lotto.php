@@ -40,19 +40,28 @@ return [
     'scraper' => [
         // Source driver: 'gma' (recommended — gmanetwork.com, plain HTTP, no
         // WAF/blocks), 'lottopcso' (legacy — blocked from PH ISPs by CICC
-        // DNS), or 'pcso_gov' (official — behind Akamai bot-WAF, requires
-        // the Playwright sidecar fetcher).
+        // DNS), 'pcso_gov' (official — behind Akamai bot-WAF, requires the
+        // Playwright sidecar fetcher), or 'pcso_api' (standalone pcso-parser
+        // REST API daemon — requires the pcso_api fetcher).
         'source' => env('LOTTO_SCRAPER_SOURCE', 'lottopcso'),
         'source_label' => env('LOTTO_SCRAPER_SOURCE_LABEL', 'lottopcso.com'),
         'cache_ttl_seconds' => (int) env('LOTTO_SCRAPER_CACHE_TTL', 60),
         'http_timeout_seconds' => (int) env('LOTTO_SCRAPER_HTTP_TIMEOUT', 8),
 
-        // Fetcher: 'http' (default — plain Guzzle, for any non-WAF source) or
+        // Fetcher: 'http' (default — plain Guzzle, for any non-WAF source),
         // 'playwright' (calls the standalone scraper/ sidecar at sidecar_url,
-        // required for pcso.gov.ph since it sits behind Akamai bot-WAF).
+        // for pcso.gov.ph behind Akamai), or 'pcso_api' (calls the
+        // standalone pcso-parser REST API at api_url; pairs with the
+        // 'pcso_api' source driver).
         'fetcher' => env('LOTTO_SCRAPER_FETCHER', 'http'),
         'sidecar_url' => env('LOTTO_SCRAPER_SIDECAR_URL', 'http://127.0.0.1:8787'),
         'sidecar_token' => env('LOTTO_SCRAPER_SIDECAR_TOKEN', ''),
         'sidecar_timeout_seconds' => (int) env('LOTTO_SCRAPER_SIDECAR_TIMEOUT', 30),
+
+        // pcso-parser API (Node REST daemon). Used when fetcher=pcso_api.
+        // One POST /fetch?date=YYYY-MM-DD returns every game's parsed row
+        // for the day; we look up by stable _id (YYYY-MM-DD-<game>-<HHMMAM/PM>).
+        'api_url' => env('LOTTO_SCRAPER_API_URL', 'http://127.0.0.1:3001'),
+        'api_timeout_seconds' => (int) env('LOTTO_SCRAPER_API_TIMEOUT', 60),
     ],
 ];

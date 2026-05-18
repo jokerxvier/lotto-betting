@@ -199,3 +199,85 @@ it('parses numbers via the gma source end-to-end', function () {
 
     expect($this->scraper->fetchLatest('2d', $drawAt))->toBe([10, 28]);
 });
+
+// ── pcso-parser API source + fetcher ─────────────────────────────────────────
+
+function fakePcsoApiResponse(array $rows = []): void
+{
+    config()->set('lotto.scraper.source', 'pcso_api');
+    config()->set('lotto.scraper.fetcher', 'pcso_api');
+    config()->set('lotto.scraper.api_url', 'http://127.0.0.1:3001');
+
+    Http::fake([
+        '127.0.0.1:3001/*' => Http::response([
+            'url' => 'https://www.lottopcso.com/pcso-lotto-result-may-17-2026',
+            'fetchedAt' => '2026-05-18T16:30:00.000Z',
+            'counts' => ['results' => count($rows), 'prizes' => 0],
+            'results' => $rows,
+            'prizes' => [],
+        ], 200),
+    ]);
+}
+
+it('parses numbers via the pcso_api fetcher end-to-end', function () {
+    fakePcsoApiResponse([
+        ['_id' => '2026-05-17-2D-500PM', 'game' => '2D', 'date' => 'May 17, 2026', 'winning' => '10-28'],
+        ['_id' => '2026-05-17-3D-900PM', 'game' => '3D', 'date' => 'May 17, 2026', 'winning' => '4-3-1'],
+    ]);
+
+    $drawAt = Carbon::create(2026, 5, 17, 17, 0, 0, 'Asia/Manila')->setTimezone('UTC');
+
+    expect($this->scraper->fetchLatest('2d', $drawAt))->toBe([10, 28]);
+});
+
+it('only hits the pcso_api once per cache window across multiple draws on the same date', function () {
+    fakePcsoApiResponse([
+        ['_id' => '2026-05-17-2D-200PM', 'game' => '2D', 'date' => 'May 17, 2026', 'winning' => '10-09'],
+        ['_id' => '2026-05-17-2D-500PM', 'game' => '2D', 'date' => 'May 17, 2026', 'winning' => '10-28'],
+        ['_id' => '2026-05-17-3D-900PM', 'game' => '3D', 'date' => 'May 17, 2026', 'winning' => '4-3-1'],
+    ]);
+
+    $a = Carbon::create(2026, 5, 17, 14, 0, 0, 'Asia/Manila')->setTimezone('UTC');
+    $b = Carbon::create(2026, 5, 17, 17, 0, 0, 'Asia/Manila')->setTimezone('UTC');
+    $c = Carbon::create(2026, 5, 17, 21, 0, 0, 'Asia/Manila')->setTimezone('UTC');
+
+    expect($this->scraper->fetchLatest('2d', $a))->toBe([10, 9])
+        ->and($this->scraper->fetchLatest('2d', $b))->toBe([10, 28])
+        ->and($this->scraper->fetchLatest('3d', $c))->toBe([4, 3, 1]);
+
+    Http::assertSentCount(1);
+});
+
+it('returns null when the pcso_api response has no matching row', function () {
+    fakePcsoApiResponse([
+        ['_id' => '2026-05-17-2D-200PM', 'game' => '2D', 'date' => 'May 17, 2026', 'winning' => '10-09'],
+    ]);
+
+    // ask for 5PM — API only returned 2PM
+    $drawAt = Carbon::create(2026, 5, 17, 17, 0, 0, 'Asia/Manila')->setTimezone('UTC');
+    expect($this->scraper->fetchLatest('2d', $drawAt))->toBeNull();
+});
+
+it('returns null when the pcso_api errors out', function () {
+    config()->set('lotto.scraper.source', 'pcso_api');
+    config()->set('lotto.scraper.fetcher', 'pcso_api');
+    config()->set('lotto.scraper.api_url', 'http://127.0.0.1:3001');
+
+    Http::fake([
+        '127.0.0.1:3001/*' => Http::response(['error' => 'upstream_failure'], 502),
+    ]);
+
+    $drawAt = Carbon::create(2026, 5, 17, 17, 0, 0, 'Asia/Manila')->setTimezone('UTC');
+    expect($this->scraper->fetchLatest('2d', $drawAt))->toBeNull();
+});
+
+it('refuses pcso_api fetcher with a non-pcso_api source', function () {
+    config()->set('lotto.scraper.source', 'gma');           // mismatch
+    config()->set('lotto.scraper.fetcher', 'pcso_api');
+    Http::fake();
+
+    $drawAt = Carbon::create(2026, 5, 17, 17, 0, 0, 'Asia/Manila')->setTimezone('UTC');
+    expect($this->scraper->fetchLatest('2d', $drawAt))->toBeNull();
+
+    Http::assertNothingSent();
+});
