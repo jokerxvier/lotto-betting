@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
+use App\Actions\Settlement\ScrapeAndSettleAwaitingAction;
 use App\Actions\Settlement\SettleDrawAction;
 use App\Exceptions\DrawAlreadySettledException;
 use App\Exceptions\DrawNotReadyException;
@@ -161,5 +162,40 @@ final class DrawResultController extends Controller
                     $result->totalPayout,
                 ),
             );
+    }
+
+    /**
+     * Admin-triggered manual scrape of every awaiting draw via the same
+     * PCSO scraper the auto-publish cron uses. Bypasses the
+     * `scraper.auto_publish_enabled` toggle on purpose — an admin click
+     * is explicit consent. Per-draw idempotency + range-validation still
+     * apply.
+     */
+    public function scrape(
+        Request $request,
+        ScrapeAndSettleAwaitingAction $action,
+    ): RedirectResponse {
+        $summary = $action->execute();
+
+        Log::channel('audit')->info('admin.draws.scrape', [
+            'user_id' => $request->user()?->id,
+            'settled_count' => $summary['settled_count'],
+            'skipped_count' => $summary['skipped_count'],
+            'total_payout' => $summary['total_payout'],
+        ]);
+
+        if ($summary['settled_count'] === 0 && $summary['skipped_count'] === 0) {
+            return back()->with('status', 'No awaiting draws to scrape.');
+        }
+
+        return back()->with(
+            'status',
+            sprintf(
+                'Scrape done — %d settled, %d skipped, ₱%s paid out.',
+                $summary['settled_count'],
+                $summary['skipped_count'],
+                $summary['total_payout'],
+            ),
+        );
     }
 }

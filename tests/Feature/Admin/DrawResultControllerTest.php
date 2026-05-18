@@ -207,6 +207,46 @@ it('passes null suggestion props when the scraper finds nothing', function () {
         );
 });
 
+it('forbids non-admins from POSTing /admin/draws/scrape', function () {
+    $u = User::factory()->withWallet()->create();
+    $this->actingAs($u)->post('/admin/draws/scrape')->assertForbidden();
+});
+
+it('admin scrape endpoint runs the action and flashes a summary', function () {
+    $admin = User::factory()->admin()->withWallet()->create();
+    $game = Game::query()->where('code', '2d')->firstOrFail();
+    $drawAt = now()->setTime(17, 0)->subDay(); // 5:00 PM yesterday
+    $draw = Draw::factory()->for($game)->open()->create([
+        'draw_at' => $drawAt,
+        'cutoff_at' => (clone $drawAt)->subMinutes(60),
+    ]);
+
+    Http::fake([
+        'lottopcso.com/*' => Http::response(
+            '<table><tr><td>'.$drawAt->format('Y-m-d').'</td><td>5:00 PM</td><td>EZ2</td><td>1 - 4</td></tr></table>',
+            200,
+        ),
+    ]);
+
+    $this->actingAs($admin)
+        ->from('/admin/draws')
+        ->post('/admin/draws/scrape')
+        ->assertRedirect('/admin/draws')
+        ->assertSessionHas('status');
+
+    expect($draw->fresh()->status)->toBe('settled');
+});
+
+it('admin scrape flash reads "No awaiting draws" when there is nothing to do', function () {
+    $admin = User::factory()->admin()->withWallet()->create();
+
+    $this->actingAs($admin)
+        ->from('/admin/draws')
+        ->post('/admin/draws/scrape')
+        ->assertRedirect('/admin/draws')
+        ->assertSessionHas('status', 'No awaiting draws to scrape.');
+});
+
 it('does not call the scraper at all when the settings toggle is off', function () {
     (new SettingsService)->set('scraper.suggestions_enabled', false);
 

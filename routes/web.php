@@ -61,6 +61,9 @@ Route::middleware(['auth', EnsureAccountSetupIsComplete::class, EnsureAdmin::cla
         Route::get('draws', [AdminDrawResultController::class, 'index'])
             ->name('draws.index');
 
+        Route::post('draws/scrape', [AdminDrawResultController::class, 'scrape'])
+            ->name('draws.scrape');
+
         Route::get('draws/{draw}/result', [AdminDrawResultController::class, 'create'])
             ->name('draws.result.create');
 

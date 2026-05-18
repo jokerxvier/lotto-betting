@@ -1,5 +1,5 @@
-import { Head, Link, usePage } from '@inertiajs/react';
-import { CheckCircle2, Clock } from 'lucide-react';
+import { Form, Head, Link, usePage } from '@inertiajs/react';
+import { CheckCircle2, Clock, RefreshCw } from 'lucide-react';
 import Heading from '@/components/heading';
 import GameEmblem from '@/components/lotto/game-emblem';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,7 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
+import { Spinner } from '@/components/ui/spinner';
 
 type AwaitingDraw = {
     id: number;
@@ -44,10 +45,29 @@ export default function AdminDrawsIndex({ draws }: Props) {
         <>
             <Head title="Admin · Awaiting draws" />
             <div className="space-y-6 p-4 md:p-6">
-                <Heading
-                    title="Awaiting draws"
-                    description="Draws past their draw time with no result published yet. Publishing settles every pending bet on that draw."
-                />
+                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                    <Heading
+                        title="Awaiting draws"
+                        description="Draws past their draw time with no result published yet. Publishing settles every pending bet on that draw."
+                    />
+                    <Form action="/admin/draws/scrape" method="post">
+                        {({ processing }) => (
+                            <Button
+                                type="submit"
+                                variant="secondary"
+                                disabled={processing}
+                                className="w-full md:w-auto"
+                            >
+                                {processing ? (
+                                    <Spinner className="mr-2" />
+                                ) : (
+                                    <RefreshCw className="mr-2 size-4" />
+                                )}
+                                Scrape PCSO results
+                            </Button>
+                        )}
+                    </Form>
+                </div>
 
                 {status && (
                     <div className="flex items-center gap-2 rounded-lg border border-success/40 bg-success/10 px-3 py-2 text-sm text-success">
