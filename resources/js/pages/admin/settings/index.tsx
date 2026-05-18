@@ -156,8 +156,7 @@ export default function AdminSettings({ settings, source_label }: Props) {
                             <CardDescription>
                                 Settle bets automatically when results are
                                 scraped — no admin review. Off by default.
-                                Not active until the auto-publish job
-                                ships.
+                                Runs every 5 minutes via cron when on.
                             </CardDescription>
                         </div>
                         <label

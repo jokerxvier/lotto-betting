@@ -205,7 +205,8 @@ GET   /admin/games               → Manage games + bet types + payouts (dual-co
 **Phase 1 — complete.**
 
 ### Phase 1.x — small follow-ups
-- ✅ PCSO result scraper — `App\Services\PcsoResultScraper` (driver pattern via `App\Services\Scrapers\ScraperDriver`; `LottopcsoDriver` for `lottopcso.com`) pre-fills the `/admin/draws/{draw}/result` form. Never throws (network/parse failures → `null` + audit log + manual fallback). 60s URL-keyed cache. 8s HTTP timeout. Gated by `App\Services\SettingsService` runtime toggle `scraper.suggestions_enabled` (default ON) — admin flips it at `/admin/settings` without a deploy. An `auto_publish_enabled` toggle is also exposed but inert until the Phase 2 auto-publish job ships; turning it ON requires typing `AUTO-PUBLISH` in a confirmation dialog.
+- ✅ PCSO result scraper — `App\Services\PcsoResultScraper` (driver pattern via `App\Services\Scrapers\ScraperDriver`; `LottopcsoDriver` for `lottopcso.com`) pre-fills the `/admin/draws/{draw}/result` form. Never throws (network/parse failures → `null` + audit log + manual fallback). 60s URL-keyed cache. 8s HTTP timeout. Gated by `App\Services\SettingsService` runtime toggle `scraper.suggestions_enabled` (default ON) — admin flips it at `/admin/settings` without a deploy.
+- ✅ Auto-publish + settle (Option C) — `php artisan draws:auto-settle` (scheduled `everyFiveMinutes()->onOneServer()->withoutOverlapping()` in `routes/console.php`). Gated by the `scraper.auto_publish_enabled` toggle (default OFF, requires admin to type `AUTO-PUBLISH` to enable). For each awaiting draw: scraper fetch → range-validate (defense in depth) → wrap `DrawResult::create` + `SettleDrawAction` in a per-draw transaction. Idempotent via `DrawAlreadySettledException`. Every auto-settle + every skip writes an `audit` log line. `--force` flag bypasses the toggle for ops debugging; `--draw=N` targets a single draw.
 
 ### Phase 2 — Hardening (1–2 weeks)
 - ⬜ Advance betting.

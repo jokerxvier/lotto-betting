@@ -55,7 +55,10 @@ final class LottopcsoDriver implements ScraperDriver
         $rows = preg_split('/<\/tr>/i', $body) ?: [];
 
         foreach ($rows as $row) {
-            $text = strip_tags($row);
+            // Insert a space between every tag boundary first — otherwise
+            // strip_tags() concatenates adjacent cells (`<td>EZ2</td><td>7`
+            // becomes `EZ27`) and the regex picks up bogus numbers.
+            $text = (string) preg_replace('/<[^>]*>/', ' ', $row);
             $text = (string) preg_replace('/\s+/u', ' ', $text);
             $textUpper = strtoupper($text);
 
