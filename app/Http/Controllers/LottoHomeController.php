@@ -28,12 +28,19 @@ final class LottoHomeController extends Controller
                 ->orderByDesc('draw_at')
                 ->first();
 
-            $next = Draw::query()
+            // All scheduled draws in the next 7-day window for this game.
+            // The first one (by cutoff) is the "next" we surface as a
+            // dedicated convenience; the full list powers the ADVANCE
+            // bottom sheet so a user can bet on any future draw.
+            $upcoming = Draw::query()
                 ->where('game_id', $game->id)
                 ->where('status', 'scheduled')
                 ->where('cutoff_at', '>', now())
+                ->where('draw_at', '<=', now()->addDays(7))
                 ->orderBy('cutoff_at')
-                ->first();
+                ->get(['id', 'draw_at', 'cutoff_at', 'status']);
+
+            $next = $upcoming->first();
 
             $betTypes = GameBetType::query()
                 ->where('game_id', $game->id)
@@ -73,6 +80,11 @@ final class LottoHomeController extends Controller
                 'next_draw_id' => $next?->id,
                 'next_draw_at' => $next?->draw_at?->toIso8601String(),
                 'next_cutoff_at' => $next?->cutoff_at?->toIso8601String(),
+                'upcoming_draws' => $upcoming->map(fn (Draw $d): array => [
+                    'id' => $d->id,
+                    'draw_at' => $d->draw_at->toIso8601String(),
+                    'cutoff_at' => $d->cutoff_at->toIso8601String(),
+                ])->values(),
             ];
         });
 

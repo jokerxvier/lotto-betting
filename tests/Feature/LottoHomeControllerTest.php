@@ -61,7 +61,48 @@ it('surfaces the latest settled result and the next open draw per game', functio
         ->where('games.0.latest_result_numbers', [7, 22])
         ->where('games.0.next_draw_id', $next->id)
         ->where('games.0.payout_label', '₱10 bet wins ₱5,500')
+        ->where('games.0.upcoming_draws.0.id', $next->id)
     );
+});
+
+it('exposes a 7-day upcoming_draws list per game (for advance betting)', function () {
+    $user = User::factory()->withWallet('500.00')->create();
+    $twoD = Game::query()->where('code', '2d')->firstOrFail();
+
+    // Three future draws in the 7-day window
+    $a = Draw::factory()->for($twoD)->open()->create([
+        'draw_at' => now()->addHour(),
+        'cutoff_at' => now()->addMinutes(50),
+    ]);
+    $b = Draw::factory()->for($twoD)->open()->create([
+        'draw_at' => now()->addDay(),
+        'cutoff_at' => now()->addDay()->subMinutes(10),
+    ]);
+    $c = Draw::factory()->for($twoD)->open()->create([
+        'draw_at' => now()->addDays(3),
+        'cutoff_at' => now()->addDays(3)->subMinutes(10),
+    ]);
+    // Outside the window — should NOT appear
+    Draw::factory()->for($twoD)->open()->create([
+        'draw_at' => now()->addDays(14),
+        'cutoff_at' => now()->addDays(14)->subMinutes(10),
+    ]);
+    // Already past cutoff — should NOT appear
+    Draw::factory()->for($twoD)->open()->create([
+        'draw_at' => now()->addMinutes(5),
+        'cutoff_at' => now()->subMinutes(5),
+    ]);
+
+    $this->actingAs($user)
+        ->get('/lotto')
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            // first card is 2D; assert exactly 3 upcoming draws in order
+            ->has('games.0.upcoming_draws', 3)
+            ->where('games.0.upcoming_draws.0.id', $a->id)
+            ->where('games.0.upcoming_draws.1.id', $b->id)
+            ->where('games.0.upcoming_draws.2.id', $c->id)
+        );
 });
 
 it('includes the wallet balance via shared inertia props', function () {

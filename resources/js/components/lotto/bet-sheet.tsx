@@ -39,7 +39,24 @@ export type BetSheetGame = {
     bet_types: BetType[];
 };
 
-type Props = PropsWithChildren<{ game: BetSheetGame }>;
+/**
+ * Optional override for which draw the wizard targets. When omitted the
+ * wizard binds to `game.next_draw_*` (the soonest open draw). The ADVANCE
+ * flow uses this to bind the wizard to an arbitrary future draw.
+ */
+export type TargetDraw = {
+    id: number;
+    draw_at: string;
+};
+
+type Props = PropsWithChildren<{
+    game: BetSheetGame;
+    /** When supplied, overrides `game.next_draw_*` for this wizard mount. */
+    targetDraw?: TargetDraw | null;
+    /** Controlled-mode escape hatches for callers driving open state. */
+    open?: boolean;
+    onOpenChange?: (open: boolean) => void;
+}>;
 
 type Errors = Record<string, string | undefined>;
 
@@ -56,23 +73,50 @@ const formatDrawTime = (iso: string | null): string => {
     });
 };
 
-export default function BetSheet({ game, children }: Props) {
-    const [open, setOpen] = useState(false);
+export default function BetSheet({
+    game,
+    targetDraw,
+    open: controlledOpen,
+    onOpenChange,
+    children,
+}: Props) {
+    const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+    const isControlled = controlledOpen !== undefined;
+    const open = isControlled ? controlledOpen : uncontrolledOpen;
+    const setOpen = (next: boolean) => {
+        if (isControlled) {
+            onOpenChange?.(next);
+        } else {
+            setUncontrolledOpen(next);
+        }
+    };
 
-    if (!game.next_draw_id || !game.next_draw_at) {
+    // Resolved draw: explicit targetDraw wins, otherwise fall back to the
+    // game's next scheduled draw. If neither exists (no upcoming draws),
+    // the sheet can't open — render children inert.
+    const resolvedDraw: TargetDraw | null = targetDraw
+        ? targetDraw
+        : game.next_draw_id !== null && game.next_draw_at !== null
+          ? { id: game.next_draw_id, draw_at: game.next_draw_at }
+          : null;
+
+    if (!resolvedDraw) {
         return <>{children}</>;
     }
 
     return (
         <Sheet open={open} onOpenChange={setOpen}>
-            <SheetTrigger asChild>{children}</SheetTrigger>
+            {!isControlled && (
+                <SheetTrigger asChild>{children}</SheetTrigger>
+            )}
             <SheetContent
                 side="bottom"
                 className="mx-auto max-h-[92svh] max-w-[380px] gap-0 overflow-y-auto rounded-t-2xl p-0"
             >
                 <BetWizard
                     game={game}
-                    key={open ? 'open' : 'closed'}
+                    draw={resolvedDraw}
+                    key={`${open ? 'open' : 'closed'}:${resolvedDraw.id}`}
                     onDone={() => setOpen(false)}
                 />
             </SheetContent>
@@ -82,9 +126,11 @@ export default function BetSheet({ game, children }: Props) {
 
 function BetWizard({
     game,
+    draw,
     onDone,
 }: {
     game: BetSheetGame;
+    draw: TargetDraw;
     onDone: () => void;
 }) {
     const cart = useCart();
@@ -189,13 +235,9 @@ function BetWizard({
             return;
         }
 
-        if (!game.next_draw_id || !game.next_draw_at) {
-            return;
-        }
-
         cart.add({
-            drawId: game.next_draw_id,
-            drawAt: game.next_draw_at,
+            drawId: draw.id,
+            drawAt: draw.draw_at,
             gameCode: game.code,
             gameName: game.name,
             picksCount: game.picks_count,
@@ -209,7 +251,7 @@ function BetWizard({
     };
 
     const padTo = game.picks_count === 2 ? 2 : 1;
-    const drawTime = formatDrawTime(game.next_draw_at);
+    const drawTime = formatDrawTime(draw.draw_at);
 
     return (
         <div className="flex flex-col gap-4 px-5 pt-4 pb-8">

@@ -210,7 +210,7 @@ GET   /admin/games               → Manage games + bet types + payouts (dual-co
 - ✅ Admin auth split — `users.password` column (nullable, hashed cast); admins authenticate via `/admin/login` (username + password) at `App\Http\Controllers\Auth\AdminLoginController`, throttled `admin-login` (5/min per username+IP, 20/min per IP). Login success → redirect to `/admin` (`App\Http\Controllers\Admin\DashboardController`) with stat strip (awaiting draws, bets today, paid out today) + quick-link cards to /admin/draws, /admin/settings, /admin/wallets. Admins blocked from player surfaces (`/lotto`, `/results`, `/tickets`, `/wallet`, `/games/*`) via `EnsureAccountSetupIsComplete` — they 302 to `/admin` instead. Bootstrap a real admin password via `php artisan admin:set-password {username}` (interactive; min 12 chars + complexity). Player PIN flow at `/login` unchanged.
 
 ### Phase 2 — Hardening (1–2 weeks)
-- ⬜ Advance betting.
+- ✅ Advance betting — `LottoHomeController` now passes `upcoming_draws[]` (next-7-day window of scheduled draws past their `cutoff_at` filter, ordered by `cutoff_at`) per game alongside `next_draw_*`. New `SelectDrawSheet` (shadcn `Sheet`) lists future draws as full-width buttons. ADVANCE button on `GameCard` opens it; picking a row binds a controlled `BetSheet` (new `targetDraw` prop + controlled `open`/`onOpenChange`) to the chosen draw. Cart already supports cross-draw legs — server-side `PlaceCartRequest` validates per-leg `draw_id` and `PlaceBetAction` enforces cutoff per draw, so no backend changes were needed beyond the upcoming-draws payload.
 - ⬜ Idempotency + race tests under load (k6 or Locust).
 - ⬜ Audit log surface in admin.
 - ⬜ Telegram bot for draw-result push.

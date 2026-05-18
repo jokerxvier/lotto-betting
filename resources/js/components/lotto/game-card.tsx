@@ -1,8 +1,11 @@
-import { Clock, Plus, X } from 'lucide-react';
+import { CalendarClock, Clock, X } from 'lucide-react';
+import { useState } from 'react';
 import BetSheet from '@/components/lotto/bet-sheet';
-import type { BetSheetGame } from '@/components/lotto/bet-sheet';
+import type { BetSheetGame, TargetDraw } from '@/components/lotto/bet-sheet';
 import GameEmblem from '@/components/lotto/game-emblem';
 import LottoBall from '@/components/lotto/lotto-ball';
+import SelectDrawSheet from '@/components/lotto/select-draw-sheet';
+import type { UpcomingDraw } from '@/components/lotto/select-draw-sheet';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -23,6 +26,7 @@ export type GameCardData = BetSheetGame & {
     latest_result_numbers: number[] | null;
     latest_drawn_at: string | null;
     next_cutoff_at: string | null;
+    upcoming_draws: UpcomingDraw[];
 };
 
 const formatTime = (iso: string) =>
@@ -77,6 +81,15 @@ export default function GameCard({ game }: { game: GameCardData }) {
     const cutoffPassed = countdown.expired;
     const drafts = game.next_draw_id ? cart.legsForDraw(game.next_draw_id) : [];
     const padTo = game.picks_count === 2 ? 2 : 1;
+    const advanceDraws = game.upcoming_draws.filter(
+        (d) => d.id !== game.next_draw_id,
+    );
+
+    // When the user picks an "advance" draw from the SelectDrawSheet, we
+    // bind a controlled BetSheet to that draw. null = closed.
+    const [advanceTarget, setAdvanceTarget] = useState<TargetDraw | null>(
+        null,
+    );
 
     // < 15 min remaining → soft warning. < 2 min → destructive.
     const cutoffWarning =
@@ -213,17 +226,48 @@ export default function GameCard({ game }: { game: GameCardData }) {
                             New bet
                         </Button>
                     </BetSheet>
-                    <Button
-                        variant="outline"
-                        disabled
-                        className="font-bold tracking-wide uppercase"
-                        title="Advance betting ships in Phase 2"
+                    <SelectDrawSheet
+                        gameName={game.name}
+                        draws={advanceDraws}
+                        onPick={(d) =>
+                            setAdvanceTarget({
+                                id: d.id,
+                                draw_at: d.draw_at,
+                            })
+                        }
                     >
-                        <Plus className="mr-1 size-4" />
-                        Advance
-                    </Button>
+                        <Button
+                            variant="outline"
+                            className="font-bold tracking-wide uppercase"
+                            disabled={advanceDraws.length === 0}
+                            title={
+                                advanceDraws.length === 0
+                                    ? 'No future draws yet'
+                                    : `Pick from ${advanceDraws.length} future draw${advanceDraws.length === 1 ? '' : 's'}`
+                            }
+                        >
+                            <CalendarClock className="mr-1 size-4" />
+                            Advance
+                        </Button>
+                    </SelectDrawSheet>
                 </section>
             </CardContent>
+
+            {/* Controlled BetSheet bound to the picked advance draw. Renders
+                no trigger of its own — the trigger is the row inside the
+                SelectDrawSheet above. */}
+            <BetSheet
+                game={game}
+                targetDraw={advanceTarget}
+                open={advanceTarget !== null}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setAdvanceTarget(null);
+                    }
+                }}
+            >
+                <span hidden aria-hidden />
+            </BetSheet>
         </Card>
     );
 }
