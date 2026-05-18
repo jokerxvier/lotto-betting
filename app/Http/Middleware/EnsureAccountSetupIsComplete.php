@@ -31,6 +31,14 @@ final class EnsureAccountSetupIsComplete
             return $next($request);
         }
 
+        // Admins live in the /admin/* surface only. If they hit a player
+        // surface (the routes inside the player middleware group), bounce
+        // them to their dashboard. /admin/* is gated by EnsureAdmin
+        // separately, so admins reaching their own routes pass through.
+        if ($user->is_admin === true && ! $request->routeIs('admin.*', 'logout')) {
+            return redirect()->route('admin.dashboard');
+        }
+
         $hasManualAuth = $user->username !== null && $user->pin_hash !== null;
         $hasTelegram = $user->telegram_id !== null;
 

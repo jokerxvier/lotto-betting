@@ -58,7 +58,7 @@ export default function PayTicketsBar() {
     };
 
     return (
-        <div className="pointer-events-none sticky bottom-14 z-10 px-3 pb-2">
+        <div className="pointer-events-none sticky bottom-[5.25rem] z-10 px-3 pb-2">
             <button
                 type="button"
                 onClick={pay}

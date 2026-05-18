@@ -18,6 +18,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
     'telegram_id',
     'username',
     'pin_hash',
+    'password',
     'status',
     'is_admin',
     'wallet_code',
@@ -25,6 +26,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 ])]
 #[Hidden([
     'pin_hash',
+    'password',
 ])]
 class User extends Authenticatable
 {
@@ -44,6 +46,7 @@ class User extends Authenticatable
     {
         return [
             'pin_hash' => 'hashed',
+            'password' => 'hashed',
             'is_admin' => 'boolean',
             'locked_until' => 'datetime',
         ];

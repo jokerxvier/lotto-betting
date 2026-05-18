@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Auth\AdminLoginController;
 use App\Http\Controllers\Auth\SetupPinController;
 use App\Http\Controllers\Auth\TelegramLoginController;
 use App\Http\Controllers\Auth\TelegramWebAppController;
@@ -15,6 +16,13 @@ Route::middleware('guest')->group(function (): void {
     Route::post('auth/telegram/web-app', TelegramWebAppController::class)
         ->middleware('throttle:telegram-login')
         ->name('auth.telegram.web-app');
+
+    Route::get('admin/login', [AdminLoginController::class, 'create'])
+        ->name('admin.login');
+
+    Route::post('admin/login', [AdminLoginController::class, 'store'])
+        ->middleware('throttle:admin-login')
+        ->name('admin.login.store');
 });
 
 Route::middleware('auth')->group(function (): void {

@@ -16,6 +16,8 @@ class UserFactory extends Factory
 {
     protected static ?string $cachedPinHash = null;
 
+    protected static ?string $cachedAdminPasswordHash = null;
+
     /**
      * Default state — a username + PIN account, the most common case in tests.
      *
@@ -60,9 +62,26 @@ class UserFactory extends Factory
         return $this->state(['locked_until' => now()->addMinutes(30)]);
     }
 
-    public function admin(): static
+    /**
+     * Admin account — flips is_admin and seeds a hashed password so the
+     * /admin/login flow finds something to authenticate against. The
+     * pin_hash is kept (tests can rely on the default `4729` PIN) for any
+     * legacy code path that hasn't been migrated off PINs yet.
+     */
+    public function admin(string $password = 'admin-pass-2026'): static
     {
-        return $this->state(['is_admin' => true]);
+        return $this->state(function () use ($password): array {
+            // Hash the default password once per process; allow callers to
+            // pass a different password (which won't be cached).
+            $hashed = $password === 'admin-pass-2026'
+                ? (static::$cachedAdminPasswordHash ??= Hash::make($password))
+                : Hash::make($password);
+
+            return [
+                'is_admin' => true,
+                'password' => $hashed,
+            ];
+        });
     }
 
     public function withWallet(string $balance = '0.00'): static

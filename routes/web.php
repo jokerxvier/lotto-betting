@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\DrawResultController as AdminDrawResultController;
 use App\Http\Controllers\Admin\SettingsController as AdminSettingsController;
 use App\Http\Controllers\Admin\WalletController as AdminWalletController;
@@ -17,9 +18,13 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return Auth::check()
-        ? redirect()->route('lotto')
-        : redirect()->route('login');
+    if (! Auth::check()) {
+        return redirect()->route('login');
+    }
+
+    return Auth::user()->is_admin === true
+        ? redirect()->route('admin.dashboard')
+        : redirect()->route('lotto');
 })->name('home');
 
 Route::middleware(['auth', EnsureAccountSetupIsComplete::class])->group(function (): void {
@@ -44,6 +49,9 @@ Route::middleware(['auth', EnsureAccountSetupIsComplete::class])->group(function
 
 Route::middleware(['auth', EnsureAccountSetupIsComplete::class, EnsureAdmin::class])
     ->prefix('admin')->name('admin.')->group(function (): void {
+        Route::get('/', [AdminDashboardController::class, 'index'])
+            ->name('dashboard');
+
         Route::get('wallets', [AdminWalletController::class, 'create'])
             ->name('wallets.create');
 

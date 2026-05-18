@@ -66,7 +66,7 @@ export default function LottoLayout({ children }: PropsWithChildren) {
                         </div>
                     </header>
 
-                    <main className="flex-1 pb-32">{children}</main>
+                    <main className="flex-1 pb-36">{children}</main>
 
                     <PayTicketsBar />
                     <LottoTabBar />

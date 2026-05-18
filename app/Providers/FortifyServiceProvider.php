@@ -75,5 +75,18 @@ final class FortifyServiceProvider extends ServiceProvider
                 (string) ($request->user()?->id ?? $request->ip()),
             );
         });
+
+        // Admin sign-in is sensitive; tighter limit than the player PIN.
+        // Per-username AND per-IP keys so an attacker can't drain one user's
+        // budget then walk to another username on the same IP.
+        RateLimiter::for('admin-login', function (Request $request): array {
+            $username = Str::lower((string) $request->input('username'));
+            $ip = (string) $request->ip();
+
+            return [
+                Limit::perMinute(5)->by('admin|'.$username.'|'.$ip),
+                Limit::perMinute(20)->by('admin|'.$ip),
+            ];
+        });
     }
 }
