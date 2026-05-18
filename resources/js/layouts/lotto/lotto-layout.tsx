@@ -4,12 +4,20 @@ import type { PropsWithChildren } from 'react';
 import LottoTabBar from '@/components/lotto/lotto-tab-bar';
 import PayTicketsBar from '@/components/lotto/pay-tickets-bar';
 import ThemeToggle from '@/components/theme-toggle';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { UserMenuContent } from '@/components/user-menu-content';
 import { CartProvider } from '@/contexts/cart-context';
+import { useInitials } from '@/hooks/use-initials';
 import { formatPeso } from '@/lib/money';
+import type { User } from '@/types/auth';
 
 type SharedProps = {
     auth: {
-        user: { username: string | null; name: string | null } | null;
+        user: User | null;
         wallet: { balance: string; wallet_code: string } | null;
     };
 };
@@ -26,6 +34,7 @@ export default function LottoLayout({ children }: PropsWithChildren) {
     const balanceIsZero =
         !auth.wallet ||
         Number.parseFloat(auth.wallet.balance || '0') === 0;
+    const getInitials = useInitials();
 
     return (
         <CartProvider>
@@ -62,6 +71,30 @@ export default function LottoLayout({ children }: PropsWithChildren) {
                                     <WalletIcon className="size-3.5" />
                                     {formatPeso(auth.wallet.balance)}
                                 </Link>
+                            )}
+
+                            {auth.user && (
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <button
+                                            type="button"
+                                            aria-label="Account menu"
+                                            className="flex size-9 items-center justify-center rounded-full bg-muted text-sm font-bold text-foreground transition-transform hover:bg-accent active:scale-95"
+                                        >
+                                            {getInitials(
+                                                auth.user.name ??
+                                                    auth.user.username ??
+                                                    auth.user.wallet_code,
+                                            )}
+                                        </button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent
+                                        align="end"
+                                        className="min-w-56 rounded-lg"
+                                    >
+                                        <UserMenuContent user={auth.user} />
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
                             )}
                         </div>
                     </header>
