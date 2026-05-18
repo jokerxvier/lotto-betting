@@ -5,6 +5,7 @@ import GameEmblem from '@/components/lotto/game-emblem';
 import LottoBall from '@/components/lotto/lotto-ball';
 import { Card, CardContent } from '@/components/ui/card';
 import { useCountdown } from '@/hooks/use-countdown';
+import { slotLabel } from '@/lib/draw-time';
 import { cn } from '@/lib/utils';
 
 type ResultState = 'open' | 'awaiting' | 'settled';
@@ -98,7 +99,7 @@ function ResultRow({ row }: { row: DrawResultRow }) {
                                 {row.game.name}
                             </p>
                             <p className="text-xs text-muted-foreground">
-                                {formatDrawTime(row.draw_at)} draw
+                                {slotLabel(row.draw_at)} draw
                             </p>
                         </div>
                     </div>

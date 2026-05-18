@@ -8,6 +8,7 @@ import {
     SheetTitle,
     SheetTrigger,
 } from '@/components/ui/sheet';
+import { formatDrawRow } from '@/lib/draw-time';
 
 export type UpcomingDraw = {
     id: number;
@@ -26,15 +27,6 @@ type Props = PropsWithChildren<{
      */
     onPick: (draw: UpcomingDraw) => void;
 }>;
-
-const formatRow = (iso: string): string =>
-    new Date(iso).toLocaleString('en-PH', {
-        weekday: 'short',
-        month: 'short',
-        day: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-    });
 
 /**
  * Bottom-sheet picker listing every upcoming draw in the 7-day window
@@ -83,7 +75,7 @@ export default function SelectDrawSheet({
                                 >
                                     <span className="flex items-center gap-2">
                                         <Clock className="size-4 opacity-80" />
-                                        {formatRow(d.draw_at)}
+                                        {formatDrawRow(d.draw_at)}
                                     </span>
                                 </Button>
                             </li>

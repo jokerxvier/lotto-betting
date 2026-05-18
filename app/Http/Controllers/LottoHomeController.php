@@ -77,6 +77,9 @@ final class LottoHomeController extends Controller
                 'bet_types' => $betTypes,
                 'latest_result_numbers' => $latest?->result?->numbers,
                 'latest_drawn_at' => $latest?->draw_at?->toIso8601String(),
+                'latest_drawn_label' => $latest
+                    ? $this->slotLabel((int) $latest->draw_at->setTimezone('Asia/Manila')->format('H'))
+                    : null,
                 'next_draw_id' => $next?->id,
                 'next_draw_at' => $next?->draw_at?->toIso8601String(),
                 'next_cutoff_at' => $next?->cutoff_at?->toIso8601String(),
@@ -103,5 +106,20 @@ final class LottoHomeController extends Controller
         $isWhole = $float == (int) $float;
 
         return number_format($float, $isWhole ? 0 : 2, '.', ',');
+    }
+
+    /**
+     * 14 → "2PM", 17 → "5PM", 21 → "9PM". For non-canonical hours falls
+     * back to "Hh AM/PM" — matches the JS `slotLabel()` helper's
+     * canonical-slot table so server- and client-rendered labels agree.
+     */
+    private function slotLabel(int $hour): string
+    {
+        return match ($hour) {
+            14 => '2PM',
+            17 => '5PM',
+            21 => '9PM',
+            default => date('g\\A', mktime($hour, 0, 0)),
+        };
     }
 }

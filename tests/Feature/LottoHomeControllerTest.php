@@ -9,6 +9,7 @@ use App\Models\GameBetType;
 use App\Models\User;
 use Database\Seeders\GameBetTypeSeeder;
 use Database\Seeders\GameSeeder;
+use Illuminate\Support\Carbon;
 
 beforeEach(function (): void {
     $this->seed(GameSeeder::class);
@@ -62,7 +63,29 @@ it('surfaces the latest settled result and the next open draw per game', functio
         ->where('games.0.next_draw_id', $next->id)
         ->where('games.0.payout_label', '₱10 bet wins ₱5,500')
         ->where('games.0.upcoming_draws.0.id', $next->id)
+        ->has('games.0.latest_drawn_label')
     );
+});
+
+it('labels the latest settled result with a PCSO slot tag (2PM/5PM/9PM)', function () {
+    $user = User::factory()->withWallet('500.00')->create();
+    $twoD = Game::query()->where('code', '2d')->firstOrFail();
+
+    // 09:00 UTC = 17:00 Manila — pin the timestamp explicitly so the
+    // factory's default `settled()` draw_at can't override it.
+    $drawAt = Carbon::parse('2026-05-17 09:00:00', 'UTC');
+    $settled = Draw::factory()->for($twoD)->create([
+        'draw_at' => $drawAt,
+        'cutoff_at' => $drawAt->copy()->subMinutes(10),
+        'status' => 'settled',
+    ]);
+    DrawResult::factory()->for($settled)->create(['numbers' => [1, 4]]);
+
+    $this->actingAs($user)
+        ->get('/lotto')
+        ->assertInertia(fn ($page) => $page
+            ->where('games.0.latest_drawn_label', '5PM')
+        );
 });
 
 it('exposes a 7-day upcoming_draws list per game (for advance betting)', function () {

@@ -16,6 +16,7 @@ import {
 import { useCart } from '@/contexts/cart-context';
 import type { DraftLeg } from '@/contexts/cart-context';
 import { useCountdown } from '@/hooks/use-countdown';
+import { formatDrawRow } from '@/lib/draw-time';
 import { formatPeso } from '@/lib/money';
 import { cn } from '@/lib/utils';
 
@@ -25,15 +26,10 @@ export type GameCardData = BetSheetGame & {
     target_bet_type_id: number | null;
     latest_result_numbers: number[] | null;
     latest_drawn_at: string | null;
+    latest_drawn_label: string | null;
     next_cutoff_at: string | null;
     upcoming_draws: UpcomingDraw[];
 };
-
-const formatTime = (iso: string) =>
-    new Date(iso).toLocaleTimeString('en-PH', {
-        hour: 'numeric',
-        minute: '2-digit',
-    });
 
 function DraftLegRow({
     leg,
@@ -119,7 +115,9 @@ export default function GameCard({ game }: { game: GameCardData }) {
                     game.latest_result_numbers.length > 0 && (
                         <div className="flex flex-col items-end gap-1">
                             <span className="text-[0.6rem] font-bold tracking-wider text-muted-foreground uppercase">
-                                Latest
+                                {game.latest_drawn_label
+                                    ? `${game.latest_drawn_label} Result`
+                                    : 'Latest result'}
                             </span>
                             <div className="flex flex-wrap items-center justify-end gap-1">
                                 {game.latest_result_numbers.map((n, i) => (
@@ -149,11 +147,8 @@ export default function GameCard({ game }: { game: GameCardData }) {
                                           : 'text-primary',
                                 )}
                             />
-                            <span className="font-bold">
-                                {formatTime(game.next_draw_at)}
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                                draw
+                            <span className="font-bold tabular-nums">
+                                {formatDrawRow(game.next_draw_at)}
                             </span>
                             {!cutoffPassed && (
                                 <span
