@@ -24,35 +24,24 @@ it('sets password + promotes a non-admin user with --password flag', function ()
         ->and(Hash::check('Operator-2026-Strong', $fresh->password))->toBeTrue();
 });
 
-it('rejects passwords shorter than 12 chars', function () {
-    User::factory()->create(['username' => 'opsguy']);
+it('accepts a simple 6-char password (no complexity required)', function () {
+    $user = User::factory()->create(['username' => 'opsguy', 'is_admin' => false]);
 
     $this->artisan('admin:set-password', [
         'username' => 'opsguy',
-        '--password' => 'Short-1',
-    ])
-        ->expectsOutputToContain('at least 12 characters')
-        ->assertFailed();
+        '--password' => 'pinpin',
+    ])->assertSuccessful();
+
+    expect(Hash::check('pinpin', $user->fresh()->password))->toBeTrue();
 });
 
-it('rejects passwords missing an uppercase letter', function () {
+it('rejects passwords shorter than 6 chars', function () {
     User::factory()->create(['username' => 'opsguy']);
 
     $this->artisan('admin:set-password', [
         'username' => 'opsguy',
-        '--password' => 'all-lowercase-1',
+        '--password' => 'abc12',
     ])
-        ->expectsOutputToContain('uppercase')
-        ->assertFailed();
-});
-
-it('rejects passwords missing a digit', function () {
-    User::factory()->create(['username' => 'opsguy']);
-
-    $this->artisan('admin:set-password', [
-        'username' => 'opsguy',
-        '--password' => 'AllLetters-NoNumber',
-    ])
-        ->expectsOutputToContain('digit')
+        ->expectsOutputToContain('at least 6 characters')
         ->assertFailed();
 });

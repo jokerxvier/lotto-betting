@@ -19,8 +19,9 @@ use Illuminate\Support\Facades\Log;
  * for scripted deploys (tests + CI). Also sets `is_admin = true` if the
  * user wasn't already an admin.
  *
- * Min complexity enforced in code: 12 chars, ≥1 uppercase, ≥1 lowercase,
- * ≥1 digit. We don't want a 4-digit number sneaking in here.
+ * Min enforced in code: 6 chars. Complexity (uppercase / digits) is left
+ * to operator discipline — production admins can pick a strong password
+ * voluntarily, and an env-gated strict rule can be added later if needed.
  */
 #[Signature('admin:set-password
                             {username : Username of the admin to (re-)set}
@@ -42,7 +43,7 @@ final class AdminSetPasswordCommand extends Command
 
         $password = $this->option('password');
         if (! is_string($password) || $password === '') {
-            $password = (string) $this->secret('Password (min 12 chars; needs A-Z, a-z, 0-9)');
+            $password = (string) $this->secret('Password (min 6 chars)');
             $confirm = (string) $this->secret('Confirm password');
 
             if ($password !== $confirm) {
@@ -77,17 +78,8 @@ final class AdminSetPasswordCommand extends Command
 
     private function validateStrength(string $pw): ?string
     {
-        if (strlen($pw) < 12) {
-            return 'Password must be at least 12 characters.';
-        }
-        if (preg_match('/[A-Z]/', $pw) !== 1) {
-            return 'Password must include at least one uppercase letter.';
-        }
-        if (preg_match('/[a-z]/', $pw) !== 1) {
-            return 'Password must include at least one lowercase letter.';
-        }
-        if (preg_match('/\d/', $pw) !== 1) {
-            return 'Password must include at least one digit.';
+        if (strlen($pw) < 6) {
+            return 'Password must be at least 6 characters.';
         }
 
         return null;
