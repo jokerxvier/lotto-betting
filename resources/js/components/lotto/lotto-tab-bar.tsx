@@ -69,7 +69,7 @@ export default function LottoTabBar() {
                 const content = (
                     <span
                         className={cn(
-                            'relative flex h-full min-h-[4.5rem] flex-col items-center justify-center gap-1 px-1 pt-2 pb-1 text-[0.7rem] leading-none tracking-wide uppercase transition-colors',
+                            'relative flex h-full w-full min-h-[4.5rem] flex-col items-center justify-center gap-1 px-1 pt-2 pb-1 text-[0.7rem] leading-none tracking-wide uppercase transition-colors',
                             tab.disabled
                                 ? 'font-semibold text-surface-nav-foreground/50'
                                 : active
