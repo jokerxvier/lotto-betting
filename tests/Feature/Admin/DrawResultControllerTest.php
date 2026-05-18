@@ -9,12 +9,16 @@ use App\Models\DrawResult;
 use App\Models\Game;
 use App\Models\GameBetType;
 use App\Models\User;
+use App\Services\SettingsService;
 use Database\Seeders\GameBetTypeSeeder;
 use Database\Seeders\GameSeeder;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
 
 beforeEach(function (): void {
     $this->seed(GameSeeder::class);
     $this->seed(GameBetTypeSeeder::class);
+    Cache::flush();
 });
 
 /**
@@ -154,4 +158,78 @@ it('rejects re-publishing an already-settled draw', function () {
         ->from("/admin/draws/{$draw->id}/result")
         ->post("/admin/draws/{$draw->id}/result", ['numbers' => [1, 4]])
         ->assertSessionHasErrors('numbers');
+});
+
+it('pre-fills the form with numbers scraped from the configured source', function () {
+    $admin = User::factory()->admin()->withWallet()->create();
+    $game = Game::query()->where('code', '2d')->firstOrFail();
+    $drawAt = now()->setTime(17, 0)->subDay(); // 5:00 PM yesterday
+    $draw = Draw::factory()->for($game)->open()->create([
+        'draw_at' => $drawAt,
+        'cutoff_at' => (clone $drawAt)->subMinutes(60),
+    ]);
+
+    Http::fake([
+        'lottopcso.com/*' => Http::response(
+            '<table><tr><td>'.$drawAt->format('Y-m-d').'</td><td>5:00 PM</td><td>EZ2</td><td>17 - 22</td></tr></table>',
+            200,
+        ),
+    ]);
+
+    $this->actingAs($admin)
+        ->get("/admin/draws/{$draw->id}/result")
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('admin/draws/result')
+            ->where('suggested_numbers', [17, 22])
+            ->where('suggestion_source', 'lottopcso.com')
+        );
+});
+
+it('passes null suggestion props when the scraper finds nothing', function () {
+    $admin = User::factory()->admin()->withWallet()->create();
+    $game = Game::query()->where('code', '2d')->firstOrFail();
+    $draw = Draw::factory()->for($game)->open()->create([
+        'draw_at' => now()->setTime(17, 0)->subDay(),
+        'cutoff_at' => now()->setTime(16, 0)->subDay(),
+    ]);
+
+    Http::fake([
+        'lottopcso.com/*' => Http::response('<html>no rows here</html>', 200),
+    ]);
+
+    $this->actingAs($admin)
+        ->get("/admin/draws/{$draw->id}/result")
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('suggested_numbers', null)
+            ->where('suggestion_source', null)
+        );
+});
+
+it('does not call the scraper at all when the settings toggle is off', function () {
+    (new SettingsService)->set('scraper.suggestions_enabled', false);
+
+    // Sanity: the toggle is visible to a fresh service instance.
+    expect((new SettingsService)->get('scraper.suggestions_enabled'))->toBeFalse();
+
+    $admin = User::factory()->admin()->withWallet()->create();
+    $game = Game::query()->where('code', '2d')->firstOrFail();
+    $draw = Draw::factory()->for($game)->open()->create([
+        'draw_at' => now()->setTime(17, 0)->subDay(),
+        'cutoff_at' => now()->setTime(16, 0)->subDay(),
+    ]);
+
+    Http::fake();
+
+    $this->actingAs($admin)
+        ->get("/admin/draws/{$draw->id}/result")
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('suggested_numbers', null)
+            ->where('suggestion_source', null)
+        );
+
+    // Filter out Inertia's own SSR POST — only fail on actual scraper calls.
+    Http::assertNotSent(fn ($req): bool => str_contains($req->url(), 'lottopcso.com'));
 });

@@ -1,5 +1,5 @@
 import { Form, Head, Link } from '@inertiajs/react';
-import { ArrowLeft, AlertTriangle } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Sparkles } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
@@ -32,6 +32,8 @@ type Props = {
             number_max: number;
         };
     };
+    suggested_numbers: number[] | null;
+    suggestion_source: string | null;
 };
 
 const formatDateTime = (iso: string): string =>
@@ -43,9 +45,19 @@ const formatDateTime = (iso: string): string =>
         minute: '2-digit',
     });
 
-export default function AdminDrawResult({ draw }: Props) {
-    const [picks, setPicks] = useState<string[]>(
-        Array.from({ length: draw.game.picks_count }, () => ''),
+export default function AdminDrawResult({
+    draw,
+    suggested_numbers,
+    suggestion_source,
+}: Props) {
+    const hasUsableSuggestion =
+        suggested_numbers !== null &&
+        suggested_numbers.length === draw.game.picks_count;
+
+    const [picks, setPicks] = useState<string[]>(() =>
+        hasUsableSuggestion
+            ? suggested_numbers!.map((n) => String(n))
+            : Array.from({ length: draw.game.picks_count }, () => ''),
     );
 
     const allFilled = picks.every((p) => p !== '');
@@ -135,6 +147,19 @@ export default function AdminDrawResult({ draw }: Props) {
                 >
                     {({ processing, errors }) => (
                         <>
+                            {hasUsableSuggestion && suggestion_source && (
+                                <div className="flex items-start gap-2 rounded-lg border border-primary/30 bg-primary/5 p-3 text-xs">
+                                    <Sparkles className="mt-0.5 size-4 shrink-0 text-primary" />
+                                    <p className="text-foreground">
+                                        <span className="font-bold">
+                                            Suggested by {suggestion_source}.
+                                        </span>{' '}
+                                        Eyeball-check against the official
+                                        source before publishing.
+                                    </p>
+                                </div>
+                            )}
+
                             <Card>
                                 <CardHeader>
                                     <CardTitle className="text-sm tracking-wide uppercase">

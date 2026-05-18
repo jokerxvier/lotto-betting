@@ -12,6 +12,7 @@ use App\Http\Requests\Admin\PublishDrawResultRequest;
 use App\Models\Bet;
 use App\Models\Draw;
 use App\Models\DrawResult;
+use App\Services\PcsoResultScraper;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -65,8 +66,11 @@ final class DrawResultController extends Controller
         ]);
     }
 
-    public function create(Request $request, Draw $draw): Response
-    {
+    public function create(
+        Request $request,
+        Draw $draw,
+        PcsoResultScraper $scraper,
+    ): Response {
         $draw->loadMissing(['game', 'result']);
 
         if ($draw->result !== null) {
@@ -77,6 +81,14 @@ final class DrawResultController extends Controller
             ->where('draw_id', $draw->id)
             ->where('status', 'pending')
             ->sum('potential_payout');
+
+        // Best-effort: ask the scraper for the published numbers. If the
+        // toggle is off / source is down / no match → null, form opens
+        // empty (same as Option A).
+        $suggestedNumbers = $scraper->fetchLatest(
+            $draw->game->code,
+            $draw->draw_at,
+        );
 
         return Inertia::render('admin/draws/result', [
             'draw' => [
@@ -95,6 +107,10 @@ final class DrawResultController extends Controller
                     ->count(),
                 'pending_potential_payout' => (string) $pendingBets,
             ],
+            'suggested_numbers' => $suggestedNumbers,
+            'suggestion_source' => $suggestedNumbers !== null
+                ? $scraper->sourceLabel()
+                : null,
         ]);
     }
 

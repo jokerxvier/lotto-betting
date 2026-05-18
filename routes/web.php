@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\Admin\DrawResultController as AdminDrawResultController;
+use App\Http\Controllers\Admin\SettingsController as AdminSettingsController;
 use App\Http\Controllers\Admin\WalletController as AdminWalletController;
 use App\Http\Controllers\BetController;
 use App\Http\Controllers\CartController;
@@ -57,6 +58,12 @@ Route::middleware(['auth', EnsureAccountSetupIsComplete::class, EnsureAdmin::cla
 
         Route::post('draws/{draw}/result', [AdminDrawResultController::class, 'store'])
             ->name('draws.result.store');
+
+        Route::get('settings', [AdminSettingsController::class, 'edit'])
+            ->name('settings.edit');
+
+        Route::post('settings', [AdminSettingsController::class, 'update'])
+            ->name('settings.update');
     });
 
 require __DIR__.'/auth.php';

@@ -27,4 +27,20 @@ return [
     | only affects newly-created draws — historical draws keep their values.
     */
     'cutoff_minutes' => 60,
+
+    /*
+    |---------------------------------------------------------------------------
+    | PCSO result scraper
+    |---------------------------------------------------------------------------
+    | Source selection + caching for the App\Services\PcsoResultScraper.
+    | The runtime on/off toggle ISN'T here — it's at /admin/settings (admin
+    | flips it without a deploy). These values describe HOW the scraper
+    | behaves when enabled, not whether it's enabled at all.
+    */
+    'scraper' => [
+        'source' => env('LOTTO_SCRAPER_SOURCE', 'lottopcso'),
+        'source_label' => env('LOTTO_SCRAPER_SOURCE_LABEL', 'lottopcso.com'),
+        'cache_ttl_seconds' => (int) env('LOTTO_SCRAPER_CACHE_TTL', 60),
+        'http_timeout_seconds' => (int) env('LOTTO_SCRAPER_HTTP_TIMEOUT', 8),
+    ],
 ];

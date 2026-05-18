@@ -204,6 +204,9 @@ GET   /admin/games               → Manage games + bet types + payouts (dual-co
 
 **Phase 1 — complete.**
 
+### Phase 1.x — small follow-ups
+- ✅ PCSO result scraper — `App\Services\PcsoResultScraper` (driver pattern via `App\Services\Scrapers\ScraperDriver`; `LottopcsoDriver` for `lottopcso.com`) pre-fills the `/admin/draws/{draw}/result` form. Never throws (network/parse failures → `null` + audit log + manual fallback). 60s URL-keyed cache. 8s HTTP timeout. Gated by `App\Services\SettingsService` runtime toggle `scraper.suggestions_enabled` (default ON) — admin flips it at `/admin/settings` without a deploy. An `auto_publish_enabled` toggle is also exposed but inert until the Phase 2 auto-publish job ships; turning it ON requires typing `AUTO-PUBLISH` in a confirmation dialog.
+
 ### Phase 2 — Hardening (1–2 weeks)
 - ⬜ Advance betting.
 - ⬜ Idempotency + race tests under load (k6 or Locust).
