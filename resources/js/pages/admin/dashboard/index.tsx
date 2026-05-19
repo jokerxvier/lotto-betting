@@ -7,7 +7,7 @@ import {
     Settings as SettingsIcon,
     Sparkles,
     Trophy,
-    Wallet as WalletIcon,
+    Users as UsersIcon,
 } from 'lucide-react';
 import type { ComponentType, SVGProps } from 'react';
 import Heading from '@/components/heading';
@@ -145,9 +145,7 @@ export default function AdminDashboard({ stats, settings }: Props) {
                             value={String(stats.awaiting_count)}
                             icon={Clock}
                             tone={
-                                stats.awaiting_count > 0
-                                    ? 'warning'
-                                    : 'neutral'
+                                stats.awaiting_count > 0 ? 'warning' : 'neutral'
                             }
                         />
                         <StatCard
@@ -182,10 +180,10 @@ export default function AdminDashboard({ stats, settings }: Props) {
                             description="Scraper + auto-publish toggles."
                         />
                         <QuickLinkCard
-                            href="/admin/wallets"
-                            icon={WalletIcon}
-                            title="Top up wallet"
-                            description="Credit a player by wallet code."
+                            href="/admin/users"
+                            icon={UsersIcon}
+                            title="Users"
+                            description="Search players and adjust wallets."
                         />
                     </div>
                 </section>
@@ -252,9 +250,7 @@ export default function AdminDashboard({ stats, settings }: Props) {
 
                 <div className="text-right">
                     <Button asChild variant="outline" size="sm">
-                        <Link href="/admin/settings">
-                            Manage automation
-                        </Link>
+                        <Link href="/admin/settings">Manage automation</Link>
                     </Button>
                 </div>
             </div>

@@ -5,7 +5,7 @@ declare(strict_types=1);
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\DrawResultController as AdminDrawResultController;
 use App\Http\Controllers\Admin\SettingsController as AdminSettingsController;
-use App\Http\Controllers\Admin\WalletController as AdminWalletController;
+use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\BetController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\LottoHomeController;
@@ -52,11 +52,17 @@ Route::middleware(['auth', EnsureAccountSetupIsComplete::class, EnsureAdmin::cla
         Route::get('/', [AdminDashboardController::class, 'index'])
             ->name('dashboard');
 
-        Route::get('wallets', [AdminWalletController::class, 'create'])
-            ->name('wallets.create');
+        Route::get('users', [AdminUserController::class, 'index'])
+            ->name('users.index');
 
-        Route::post('wallets/top-up', [AdminWalletController::class, 'topUp'])
-            ->name('wallets.top-up');
+        Route::get('users/{user}', [AdminUserController::class, 'show'])
+            ->name('users.show');
+
+        Route::post('users/{user}/credit', [AdminUserController::class, 'credit'])
+            ->name('users.credit');
+
+        Route::post('users/{user}/debit', [AdminUserController::class, 'debit'])
+            ->name('users.debit');
 
         Route::get('draws', [AdminDrawResultController::class, 'index'])
             ->name('draws.index');

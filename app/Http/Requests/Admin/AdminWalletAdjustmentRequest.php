@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Admin;
 
+use App\Models\User;
+use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 
-final class AdminTopUpRequest extends FormRequest
+final class AdminWalletAdjustmentRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -19,7 +21,6 @@ final class AdminTopUpRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'wallet_code' => ['required', 'string', 'size:8', 'exists:users,wallet_code'],
             'amount' => ['required', 'string', 'regex:/^\d{1,6}\.\d{2}$/'],
             'note' => ['nullable', 'string', 'max:255'],
             'idempotency_key' => ['required', 'string', 'min:8', 'max:128'],
@@ -32,9 +33,19 @@ final class AdminTopUpRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'wallet_code.size' => 'Wallet code must be 8 characters.',
-            'wallet_code.exists' => 'No user with that wallet code.',
             'amount.regex' => 'Amount must be a decimal string like "100.00".',
         ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void {
+            $target = $this->route('user');
+            $actor = $this->user();
+
+            if ($target instanceof User && $actor !== null && $target->id === $actor->id) {
+                $validator->errors()->add('amount', 'Admins cannot adjust their own wallet.');
+            }
+        });
     }
 }
