@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
+use App\Actions\Settlement\BackfillDrawResultsAction;
 use App\Actions\Settlement\ScrapeAndSettleAwaitingAction;
 use App\Actions\Settlement\SettleDrawAction;
 use App\Exceptions\DrawAlreadySettledException;
@@ -14,6 +15,7 @@ use App\Models\Bet;
 use App\Models\Draw;
 use App\Models\DrawResult;
 use App\Services\PcsoResultScraper;
+use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -195,6 +197,41 @@ final class DrawResultController extends Controller
                 $summary['settled_count'],
                 $summary['skipped_count'],
                 $summary['total_payout'],
+            ),
+        );
+    }
+
+    /**
+     * Admin-triggered backfill of the last 7 days of PCSO results.
+     * Upserts `DrawResult` rows for past draws in the range. DOES NOT
+     * settle bets — sibling to `scrape()`, but read-mostly. Refuses to
+     * overwrite numbers on already-settled draws.
+     */
+    public function backfill(
+        Request $request,
+        BackfillDrawResultsAction $action,
+    ): RedirectResponse {
+        $to = Carbon::now('Asia/Manila')->endOfDay();
+        $from = $to->copy()->subDays(7)->startOfDay();
+
+        $summary = $action->execute($from, $to);
+        $c = $summary['counts'];
+
+        Log::channel('audit')->info('admin.draws.backfill', [
+            'user_id' => $request->user()?->id,
+            'from' => $summary['from'],
+            'to' => $summary['to'],
+            'counts' => $c,
+        ]);
+
+        return back()->with(
+            'status',
+            sprintf(
+                'Backfill done — %d created, %d updated, %d unchanged, %d skipped.',
+                $c['created'],
+                $c['updated'],
+                $c['unchanged'],
+                $c['skipped_no_match'] + $c['skipped_settled'] + $c['skipped_invalid'],
             ),
         );
     }

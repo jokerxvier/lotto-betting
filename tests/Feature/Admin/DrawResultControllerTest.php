@@ -247,6 +247,64 @@ it('admin scrape flash reads "No awaiting draws" when there is nothing to do', f
         ->assertSessionHas('status', 'No awaiting draws to scrape.');
 });
 
+it('forbids non-admins from POSTing /admin/draws/backfill', function () {
+    $u = User::factory()->withWallet()->create();
+    $this->actingAs($u)->post('/admin/draws/backfill')->assertForbidden();
+});
+
+it('admin backfill endpoint runs the action and flashes a summary', function () {
+    $admin = User::factory()->admin()->withWallet()->create();
+    $game = Game::query()->where('code', '2d')->firstOrFail();
+    $drawAt = now()->setTime(17, 0)->subDay();
+    Draw::factory()->for($game)->open()->create([
+        'draw_at' => $drawAt,
+        'cutoff_at' => (clone $drawAt)->subMinutes(60),
+    ]);
+
+    Http::fake([
+        'lottopcso.com/*' => Http::response(
+            '<table><tr><td>'.$drawAt->format('Y-m-d').'</td><td>5:00 PM</td><td>EZ2</td><td>1 - 4</td></tr></table>',
+            200,
+        ),
+    ]);
+
+    $this->actingAs($admin)
+        ->from('/admin/draws')
+        ->post('/admin/draws/backfill')
+        ->assertRedirect('/admin/draws')
+        ->assertSessionHas('status');
+});
+
+it('admin backfill does NOT settle bets — sibling to scrape, deliberately', function () {
+    $admin = User::factory()->admin()->withWallet()->create();
+    $player = User::factory()->withWallet('100.00')->create();
+    $game = Game::query()->where('code', '2d')->firstOrFail();
+    $drawAt = now()->setTime(17, 0)->subDay();
+    $draw = Draw::factory()->for($game)->open()->create([
+        'draw_at' => $drawAt,
+        'cutoff_at' => (clone $drawAt)->subMinutes(60),
+    ]);
+    adminPendingBet($player, $draw, 'target', [1, 4], '5500.00', 'k-backfill-noop');
+
+    Http::fake([
+        'lottopcso.com/*' => Http::response(
+            '<table><tr><td>'.$drawAt->format('Y-m-d').'</td><td>5:00 PM</td><td>EZ2</td><td>1 - 4</td></tr></table>',
+            200,
+        ),
+    ]);
+
+    $startingBalance = $player->wallet->fresh()->balance;
+
+    $this->actingAs($admin)
+        ->from('/admin/draws')
+        ->post('/admin/draws/backfill')
+        ->assertRedirect('/admin/draws');
+
+    expect($draw->fresh()->status)->toBe('scheduled')
+        ->and(Bet::query()->where('idempotency_key', 'k-backfill-noop')->first()->status)->toBe('pending')
+        ->and($player->wallet->fresh()->balance)->toEqual($startingBalance);
+});
+
 it('does not call the scraper at all when the settings toggle is off', function () {
     (new SettingsService)->set('scraper.suggestions_enabled', false);
 

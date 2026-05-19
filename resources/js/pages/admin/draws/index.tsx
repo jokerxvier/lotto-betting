@@ -1,5 +1,5 @@
 import { Form, Head, Link, usePage } from '@inertiajs/react';
-import { CheckCircle2, Clock, RefreshCw } from 'lucide-react';
+import { CheckCircle2, Clock, History, RefreshCw } from 'lucide-react';
 import Heading from '@/components/heading';
 import GameEmblem from '@/components/lotto/game-emblem';
 import { Button } from '@/components/ui/button';
@@ -50,23 +50,42 @@ export default function AdminDrawsIndex({ draws }: Props) {
                         title="Awaiting draws"
                         description="Draws past their draw time with no result published yet. Publishing settles every pending bet on that draw."
                     />
-                    <Form action="/admin/draws/scrape" method="post">
-                        {({ processing }) => (
-                            <Button
-                                type="submit"
-                                variant="secondary"
-                                disabled={processing}
-                                className="w-full md:w-auto"
-                            >
-                                {processing ? (
-                                    <Spinner className="mr-2" />
-                                ) : (
-                                    <RefreshCw className="mr-2 size-4" />
-                                )}
-                                Scrape PCSO results
-                            </Button>
-                        )}
-                    </Form>
+                    <div className="flex flex-col gap-2 md:flex-row md:items-center">
+                        <Form action="/admin/draws/backfill" method="post">
+                            {({ processing }) => (
+                                <Button
+                                    type="submit"
+                                    variant="outline"
+                                    disabled={processing}
+                                    className="w-full md:w-auto"
+                                >
+                                    {processing ? (
+                                        <Spinner className="mr-2" />
+                                    ) : (
+                                        <History className="mr-2 size-4" />
+                                    )}
+                                    Backfill last 7 days
+                                </Button>
+                            )}
+                        </Form>
+                        <Form action="/admin/draws/scrape" method="post">
+                            {({ processing }) => (
+                                <Button
+                                    type="submit"
+                                    variant="secondary"
+                                    disabled={processing}
+                                    className="w-full md:w-auto"
+                                >
+                                    {processing ? (
+                                        <Spinner className="mr-2" />
+                                    ) : (
+                                        <RefreshCw className="mr-2 size-4" />
+                                    )}
+                                    Scrape PCSO results
+                                </Button>
+                            )}
+                        </Form>
+                    </div>
                 </div>
 
                 {status && (

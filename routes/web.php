@@ -64,6 +64,9 @@ Route::middleware(['auth', EnsureAccountSetupIsComplete::class, EnsureAdmin::cla
         Route::post('draws/scrape', [AdminDrawResultController::class, 'scrape'])
             ->name('draws.scrape');
 
+        Route::post('draws/backfill', [AdminDrawResultController::class, 'backfill'])
+            ->name('draws.backfill');
+
         Route::get('draws/{draw}/result', [AdminDrawResultController::class, 'create'])
             ->name('draws.result.create');
 
