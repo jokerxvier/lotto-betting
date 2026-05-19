@@ -65,7 +65,7 @@ export default function PayTicketsBar() {
                 disabled={processing}
                 aria-label={`Pay ${legs.length} ticket${legs.length === 1 ? '' : 's'} totalling ${formatPeso(totalAmount)}`}
                 className={cn(
-                    'pointer-events-auto group relative flex w-full items-center gap-3 overflow-hidden rounded-full bg-warning px-4 py-3 text-warning-foreground shadow-[0_4px_18px_-2px_oklch(0.75_0.16_75/0.55)] transition-all',
+                    'group pointer-events-auto relative flex w-full items-center gap-3 overflow-hidden rounded-full bg-warning px-4 py-3 text-warning-foreground shadow-[0_4px_18px_-2px_oklch(0.75_0.16_75/0.55)] transition-all',
                     'before:absolute before:inset-0 before:bg-[radial-gradient(circle_at_20%_-20%,oklch(1_0_0/0.35),transparent_55%)] before:opacity-80 before:transition-opacity',
                     'active:scale-[0.98] active:shadow-[0_2px_8px_-2px_oklch(0.75_0.16_75/0.45)]',
                     processing && 'opacity-70',

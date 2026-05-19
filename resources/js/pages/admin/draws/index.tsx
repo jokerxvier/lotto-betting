@@ -105,8 +105,8 @@ export default function AdminDrawsIndex({ draws }: Props) {
                                 No draws awaiting results
                             </p>
                             <p className="text-xs text-muted-foreground">
-                                Once a scheduled draw's time passes and it
-                                still has no result, it will appear here.
+                                Once a scheduled draw's time passes and it still
+                                has no result, it will appear here.
                             </p>
                         </CardContent>
                     </Card>

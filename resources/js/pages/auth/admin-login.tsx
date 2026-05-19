@@ -31,9 +31,7 @@ export default function AdminLogin() {
                     {({ processing, errors }) => (
                         <>
                             <div className="space-y-1">
-                                <Label htmlFor="admin-username">
-                                    Username
-                                </Label>
+                                <Label htmlFor="admin-username">Username</Label>
                                 <Input
                                     id="admin-username"
                                     name="username"
@@ -46,9 +44,7 @@ export default function AdminLogin() {
                             </div>
 
                             <div className="space-y-1">
-                                <Label htmlFor="admin-password">
-                                    Password
-                                </Label>
+                                <Label htmlFor="admin-password">Password</Label>
                                 <div className="relative">
                                     <Lock className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
                                     <Input
@@ -69,9 +65,7 @@ export default function AdminLogin() {
                                 disabled={processing}
                                 className="w-full font-semibold tracking-wide uppercase"
                             >
-                                {processing && (
-                                    <Spinner className="mr-2" />
-                                )}
+                                {processing && <Spinner className="mr-2" />}
                                 Sign in
                             </Button>
                         </>

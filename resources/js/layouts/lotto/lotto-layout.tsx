@@ -32,8 +32,7 @@ type SharedProps = {
 export default function LottoLayout({ children }: PropsWithChildren) {
     const { auth } = usePage<SharedProps>().props;
     const balanceIsZero =
-        !auth.wallet ||
-        Number.parseFloat(auth.wallet.balance || '0') === 0;
+        !auth.wallet || Number.parseFloat(auth.wallet.balance || '0') === 0;
     const getInitials = useInitials();
 
     return (

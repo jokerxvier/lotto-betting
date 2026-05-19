@@ -115,12 +115,10 @@ export default function TicketsIndex({ tickets }: Props) {
                             <Receipt className="size-5" />
                         </div>
                         <div>
-                            <p className="text-sm font-semibold">
-                                No bets yet
-                            </p>
+                            <p className="text-sm font-semibold">No bets yet</p>
                             <p className="mt-1 text-xs text-muted-foreground">
-                                Tap a game on the Lotto tab to place your
-                                first bet.
+                                Tap a game on the Lotto tab to place your first
+                                bet.
                             </p>
                         </div>
                         <Button asChild size="sm" className="mt-1">

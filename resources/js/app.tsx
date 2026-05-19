@@ -79,9 +79,9 @@ function bootTelegramWebApp(): void {
         return;
     }
 
-    const csrf = document
-        .querySelector<HTMLMetaElement>('meta[name="csrf-token"]')
-        ?.content;
+    const csrf = document.querySelector<HTMLMetaElement>(
+        'meta[name="csrf-token"]',
+    )?.content;
 
     if (!csrf) {
         return;

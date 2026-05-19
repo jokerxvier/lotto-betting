@@ -54,7 +54,7 @@ function CountdownPill({ targetIso }: { targetIso: string }) {
             : `${pad(c.minutes)}:${pad(c.seconds)}`;
 
     return (
-        <span className="flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-0.5 text-[0.7rem] font-bold tabular-nums text-primary">
+        <span className="flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-0.5 text-[0.7rem] font-bold text-primary tabular-nums">
             <span className="size-1.5 rounded-full bg-primary" />
             Closes in {label}
         </span>
@@ -193,8 +193,7 @@ export default function ResultsIndex({ results }: Props) {
                                 No draws this week
                             </p>
                             <p className="mt-1 text-xs text-muted-foreground">
-                                No draws have been scheduled in the last 7
-                                days.
+                                No draws have been scheduled in the last 7 days.
                             </p>
                         </div>
                     </div>

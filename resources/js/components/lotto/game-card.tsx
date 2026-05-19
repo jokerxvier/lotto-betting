@@ -8,11 +8,7 @@ import SelectDrawSheet from '@/components/lotto/select-draw-sheet';
 import type { UpcomingDraw } from '@/components/lotto/select-draw-sheet';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-    Card,
-    CardContent,
-    CardHeader,
-} from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { useCart } from '@/contexts/cart-context';
 import type { DraftLeg } from '@/contexts/cart-context';
 import { useCountdown } from '@/hooks/use-countdown';
@@ -83,19 +79,13 @@ export default function GameCard({ game }: { game: GameCardData }) {
 
     // When the user picks an "advance" draw from the SelectDrawSheet, we
     // bind a controlled BetSheet to that draw. null = closed.
-    const [advanceTarget, setAdvanceTarget] = useState<TargetDraw | null>(
-        null,
-    );
+    const [advanceTarget, setAdvanceTarget] = useState<TargetDraw | null>(null);
 
     // < 15 min remaining → soft warning. < 2 min → destructive.
     const cutoffWarning =
-        !cutoffPassed &&
-        countdown.hours === 0 &&
-        countdown.minutes < 15;
+        !cutoffPassed && countdown.hours === 0 && countdown.minutes < 15;
     const cutoffCritical =
-        !cutoffPassed &&
-        countdown.hours === 0 &&
-        countdown.minutes < 2;
+        !cutoffPassed && countdown.hours === 0 && countdown.minutes < 2;
 
     return (
         <Card className="overflow-hidden">
@@ -106,7 +96,7 @@ export default function GameCard({ game }: { game: GameCardData }) {
                         {game.name}
                     </h3>
                     {game.payout_label && (
-                        <p className="mt-0.5 text-xs font-semibold tabular-nums text-muted-foreground">
+                        <p className="mt-0.5 text-xs font-semibold text-muted-foreground tabular-nums">
                             {game.payout_label}
                         </p>
                     )}

@@ -34,9 +34,12 @@ export default function GameEmblem({ code, size = 'md', className }: Props) {
         <div
             className={cn(
                 'relative flex shrink-0 items-center justify-center overflow-hidden text-primary-foreground uppercase shadow-sm',
-                size === 'sm' && 'size-9 rounded-lg text-xs font-black tracking-tighter',
-                size === 'md' && 'size-12 rounded-xl text-base font-black tracking-tighter',
-                size === 'lg' && 'size-14 rounded-xl text-lg font-black tracking-tighter',
+                size === 'sm' &&
+                    'size-9 rounded-lg text-xs font-black tracking-tighter',
+                size === 'md' &&
+                    'size-12 rounded-xl text-base font-black tracking-tighter',
+                size === 'lg' &&
+                    'size-14 rounded-xl text-lg font-black tracking-tighter',
                 bgClass(code),
                 className,
             )}

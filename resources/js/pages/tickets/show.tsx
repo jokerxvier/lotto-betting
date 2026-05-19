@@ -3,11 +3,7 @@ import { ArrowLeft } from 'lucide-react';
 import GameEmblem from '@/components/lotto/game-emblem';
 import LottoBall from '@/components/lotto/lotto-ball';
 import { Button } from '@/components/ui/button';
-import {
-    Card,
-    CardContent,
-    CardHeader,
-} from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { formatPeso } from '@/lib/money';
 import { cn } from '@/lib/utils';
 
@@ -106,7 +102,7 @@ export default function TicketShow({ ticket }: { ticket: Ticket }) {
 
                 <Card
                     className={cn(
-                        'border-l-4 overflow-hidden',
+                        'overflow-hidden border-l-4',
                         statusAccent(ticket.status),
                     )}
                 >

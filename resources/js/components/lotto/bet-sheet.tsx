@@ -106,9 +106,7 @@ export default function BetSheet({
 
     return (
         <Sheet open={open} onOpenChange={setOpen}>
-            {!isControlled && (
-                <SheetTrigger asChild>{children}</SheetTrigger>
-            )}
+            {!isControlled && <SheetTrigger asChild>{children}</SheetTrigger>}
             <SheetContent
                 side="bottom"
                 className="mx-auto max-h-[92svh] max-w-[380px] gap-0 overflow-y-auto rounded-t-2xl p-0"
@@ -223,11 +221,7 @@ function BetWizard({
         const max = Number.parseFloat(selectedType.max_bet);
         const amountNum = Number.parseFloat(chosenAmount);
 
-        if (
-            !Number.isFinite(amountNum) ||
-            amountNum < min ||
-            amountNum > max
-        ) {
+        if (!Number.isFinite(amountNum) || amountNum < min || amountNum > max) {
             setErrors({
                 'legs.0.amount': `Enter an amount between ₱${selectedType.min_bet} and ₱${selectedType.max_bet}.`,
             });

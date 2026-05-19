@@ -58,8 +58,7 @@ export default function LottoTabBar() {
             aria-label="Primary"
             className="sticky bottom-0 z-10 grid grid-cols-4 border-t border-white/10 bg-surface-nav text-surface-nav-foreground shadow-[0_-2px_12px_oklch(0_0_0/0.25)]"
             style={{
-                paddingBottom:
-                    'max(env(safe-area-inset-bottom), 0.5rem)',
+                paddingBottom: 'max(env(safe-area-inset-bottom), 0.5rem)',
             }}
         >
             {TABS.map((tab) => {
@@ -69,7 +68,7 @@ export default function LottoTabBar() {
                 const content = (
                     <span
                         className={cn(
-                            'relative flex h-full w-full min-h-[4.5rem] flex-col items-center justify-center gap-1 px-1 pt-2 pb-1 text-[0.7rem] leading-none tracking-wide uppercase transition-colors',
+                            'relative flex h-full min-h-[4.5rem] w-full flex-col items-center justify-center gap-1 px-1 pt-2 pb-1 text-[0.7rem] leading-none tracking-wide uppercase transition-colors',
                             tab.disabled
                                 ? 'font-semibold text-surface-nav-foreground/50'
                                 : active
