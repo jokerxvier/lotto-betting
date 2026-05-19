@@ -252,11 +252,11 @@ it('forbids non-admins from POSTing /admin/draws/backfill', function () {
     $this->actingAs($u)->post('/admin/draws/backfill')->assertForbidden();
 });
 
-it('admin backfill endpoint runs the action and flashes a summary', function () {
+it('admin backfill endpoint runs the action and renders the result page', function () {
     $admin = User::factory()->admin()->withWallet()->create();
     $game = Game::query()->where('code', '2d')->firstOrFail();
     $drawAt = now()->setTime(17, 0)->subDay();
-    Draw::factory()->for($game)->open()->create([
+    $draw = Draw::factory()->for($game)->open()->create([
         'draw_at' => $drawAt,
         'cutoff_at' => (clone $drawAt)->subMinutes(60),
     ]);
@@ -269,10 +269,16 @@ it('admin backfill endpoint runs the action and flashes a summary', function () 
     ]);
 
     $this->actingAs($admin)
-        ->from('/admin/draws')
         ->post('/admin/draws/backfill')
-        ->assertRedirect('/admin/draws')
-        ->assertSessionHas('status');
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('admin/draws/backfill-result')
+            ->has('counts.created')
+            ->has('rows', 1)
+            ->where('rows.0.draw_id', $draw->id)
+            ->where('rows.0.numbers', [1, 4])
+            ->where('rows.0.status', 'created')
+        );
 });
 
 it('admin backfill does NOT settle bets — sibling to scrape, deliberately', function () {
@@ -296,9 +302,8 @@ it('admin backfill does NOT settle bets — sibling to scrape, deliberately', fu
     $startingBalance = $player->wallet->fresh()->balance;
 
     $this->actingAs($admin)
-        ->from('/admin/draws')
         ->post('/admin/draws/backfill')
-        ->assertRedirect('/admin/draws');
+        ->assertOk();
 
     expect($draw->fresh()->status)->toBe('scheduled')
         ->and(Bet::query()->where('idempotency_key', 'k-backfill-noop')->first()->status)->toBe('pending')

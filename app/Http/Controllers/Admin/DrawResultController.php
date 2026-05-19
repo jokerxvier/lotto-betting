@@ -206,16 +206,20 @@ final class DrawResultController extends Controller
      * Upserts `DrawResult` rows for past draws in the range. DOES NOT
      * settle bets — sibling to `scrape()`, but read-mostly. Refuses to
      * overwrite numbers on already-settled draws.
+     *
+     * Returns an Inertia page (not a redirect) so the admin can see
+     * every parsed number per draw before navigating away.
      */
     public function backfill(
         Request $request,
         BackfillDrawResultsAction $action,
-    ): RedirectResponse {
+    ): Response {
         $to = Carbon::now('Asia/Manila')->endOfDay();
         $from = $to->copy()->subDays(7)->startOfDay();
 
         $summary = $action->execute($from, $to);
         $c = $summary['counts'];
+        $skipped = $c['skipped_no_match'] + $c['skipped_settled'] + $c['skipped_invalid'];
 
         Log::channel('audit')->info('admin.draws.backfill', [
             'user_id' => $request->user()?->id,
@@ -224,15 +228,27 @@ final class DrawResultController extends Controller
             'counts' => $c,
         ]);
 
-        return back()->with(
-            'status',
-            sprintf(
-                'Backfill done — %d created, %d updated, %d unchanged, %d skipped.',
-                $c['created'],
-                $c['updated'],
-                $c['unchanged'],
-                $c['skipped_no_match'] + $c['skipped_settled'] + $c['skipped_invalid'],
-            ),
-        );
+        return Inertia::render('admin/draws/backfill-result', [
+            'from' => $summary['from'],
+            'to' => $summary['to'],
+            'counts' => [
+                'created' => $c['created'],
+                'updated' => $c['updated'],
+                'unchanged' => $c['unchanged'],
+                'skipped' => $skipped,
+                'skipped_settled' => $c['skipped_settled'],
+                'skipped_no_match' => $c['skipped_no_match'],
+                'skipped_invalid' => $c['skipped_invalid'],
+            ],
+            'rows' => array_map(static fn (array $row): array => [
+                'draw_id' => $row['draw_id'],
+                'game' => $row['game'],
+                'draw_at' => $row['draw_at'],
+                'status' => $row['status'],
+                'numbers' => $row['numbers'],
+                'prev_numbers' => $row['prev_numbers'],
+            ], $summary['per_draw']),
+            'source_label' => app(PcsoResultScraper::class)->sourceLabel(),
+        ]);
     }
 }
