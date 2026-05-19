@@ -78,3 +78,24 @@ it('throws when the user has no wallet', function () {
     expect(fn () => $this->service->debit($user, '10.00', 'bet_debit', 'k'))
         ->toThrow(RuntimeException::class);
 });
+
+it('persists the actor and note when supplied', function () {
+    $admin = User::factory()->admin()->create();
+    $target = User::factory()->withWallet('500.00')->create();
+
+    $tx = $this->service->debit(
+        $target,
+        '120.00',
+        'admin_debit',
+        'audit-debit-key',
+        reference: null,
+        actorUserId: $admin->id,
+        note: 'reversal of erroneous top-up',
+    );
+
+    expect($tx->actor_user_id)->toBe($admin->id)
+        ->and($tx->note)->toBe('reversal of erroneous top-up')
+        ->and($tx->amount)->toEqual('-120.00')
+        ->and($tx->actor)->not->toBeNull()
+        ->and($tx->actor->id)->toBe($admin->id);
+});

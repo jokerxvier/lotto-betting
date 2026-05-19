@@ -20,6 +20,8 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
     'reference_type',
     'reference_id',
     'idempotency_key',
+    'actor_user_id',
+    'note',
 ])]
 #[Hidden(['idempotency_key'])]
 class WalletTransaction extends Model
@@ -48,5 +50,17 @@ class WalletTransaction extends Model
     public function reference(): MorphTo
     {
         return $this->morphTo();
+    }
+
+    /**
+     * The admin user who performed this transaction, when applicable.
+     * Only ever populated for admin-initiated mutations (admin_credit /
+     * admin_debit). Do NOT expose to non-admin contexts.
+     *
+     * @return BelongsTo<User, $this>
+     */
+    public function actor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'actor_user_id');
     }
 }

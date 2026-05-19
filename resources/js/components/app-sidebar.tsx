@@ -1,5 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
-import { LayoutGrid, Settings, Trophy, Wallet } from 'lucide-react';
+import { LayoutGrid, Settings, Trophy, Users } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
@@ -16,7 +16,7 @@ import { lotto } from '@/routes';
 import { dashboard as adminDashboard } from '@/routes/admin';
 import { index as adminDrawsIndex } from '@/routes/admin/draws';
 import { edit as adminSettingsEdit } from '@/routes/admin/settings';
-import { create as adminWalletsCreate } from '@/routes/admin/wallets';
+import { index as adminUsersIndex } from '@/routes/admin/users';
 import type { NavItem } from '@/types';
 
 const adminNavItems: NavItem[] = [
@@ -26,14 +26,14 @@ const adminNavItems: NavItem[] = [
         icon: LayoutGrid,
     },
     {
+        title: 'Users',
+        href: adminUsersIndex(),
+        icon: Users,
+    },
+    {
         title: 'Draws',
         href: adminDrawsIndex(),
         icon: Trophy,
-    },
-    {
-        title: 'Wallets',
-        href: adminWalletsCreate(),
-        icon: Wallet,
     },
     {
         title: 'Settings',

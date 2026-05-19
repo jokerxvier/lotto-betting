@@ -68,3 +68,23 @@ it('throws when the user has no wallet', function () {
     expect(fn () => $this->service->credit($user, '100.00', 'admin_topup', 'k'))
         ->toThrow(RuntimeException::class);
 });
+
+it('persists the actor and note when supplied', function () {
+    $admin = User::factory()->admin()->create();
+    $target = User::factory()->withWallet('100.00')->create();
+
+    $tx = $this->service->credit(
+        $target,
+        '50.00',
+        'admin_credit',
+        'audit-key',
+        reference: null,
+        actorUserId: $admin->id,
+        note: 'manual top-up for refund',
+    );
+
+    expect($tx->actor_user_id)->toBe($admin->id)
+        ->and($tx->note)->toBe('manual top-up for refund')
+        ->and($tx->actor)->not->toBeNull()
+        ->and($tx->actor->id)->toBe($admin->id);
+});

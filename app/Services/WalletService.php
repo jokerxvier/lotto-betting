@@ -30,9 +30,11 @@ final class WalletService
      *
      * @param  User|Wallet  $target  wallet owner or wallet itself
      * @param  string  $amount  positive decimal string, e.g. "100.00"
-     * @param  string  $type  ledger type (e.g. "admin_topup", "deposit", "bet_payout", "refund")
+     * @param  string  $type  ledger type (e.g. "admin_credit", "deposit", "bet_payout", "refund")
      * @param  string  $idempotencyKey  unique-per-wallet caller-supplied key
      * @param  Model|null  $reference  optional source row (Deposit, Bet, …)
+     * @param  int|null  $actorUserId  acting admin's user id for audit-trail rows
+     * @param  string|null  $note  short free-text note (≤255 chars), admin context only
      */
     public function credit(
         User|Wallet $target,
@@ -40,6 +42,8 @@ final class WalletService
         string $type,
         string $idempotencyKey,
         ?Model $reference = null,
+        ?int $actorUserId = null,
+        ?string $note = null,
     ): WalletTransaction {
         if (! preg_match('/^\d{1,12}\.\d{2}$/', $amount) || bccomp($amount, '0.00', 2) !== 1) {
             throw new InvalidArgumentException('Credit amount must be a positive decimal string like "100.00".');
@@ -49,7 +53,7 @@ final class WalletService
             ? $target->id
             : ($target->wallet?->id ?? throw new RuntimeException('User has no wallet to credit.'));
 
-        return DB::transaction(function () use ($walletId, $amount, $type, $idempotencyKey, $reference): WalletTransaction {
+        return DB::transaction(function () use ($walletId, $amount, $type, $idempotencyKey, $reference, $actorUserId, $note): WalletTransaction {
             $wallet = Wallet::query()->lockForUpdate()->findOrFail($walletId);
 
             $existing = WalletTransaction::query()
@@ -70,6 +74,8 @@ final class WalletService
                 'reference_type' => $reference?->getMorphClass(),
                 'reference_id' => $reference?->getKey(),
                 'idempotency_key' => $idempotencyKey,
+                'actor_user_id' => $actorUserId,
+                'note' => $note,
             ]);
 
             $wallet->forceFill([
@@ -89,9 +95,11 @@ final class WalletService
      *
      * @param  User|Wallet  $target  wallet owner or wallet itself
      * @param  string  $amount  positive decimal string, e.g. "100.00"
-     * @param  string  $type  ledger type (e.g. "bet_debit", "withdrawal")
+     * @param  string  $type  ledger type (e.g. "bet_debit", "withdrawal", "admin_debit")
      * @param  string  $idempotencyKey  unique-per-wallet caller-supplied key
      * @param  Model|null  $reference  optional source row (Bet, Withdrawal, …)
+     * @param  int|null  $actorUserId  acting admin's user id for audit-trail rows
+     * @param  string|null  $note  short free-text note (≤255 chars), admin context only
      *
      * @throws InsufficientFundsException when balance < amount
      */
@@ -101,6 +109,8 @@ final class WalletService
         string $type,
         string $idempotencyKey,
         ?Model $reference = null,
+        ?int $actorUserId = null,
+        ?string $note = null,
     ): WalletTransaction {
         if (! preg_match('/^\d{1,12}\.\d{2}$/', $amount) || bccomp($amount, '0.00', 2) !== 1) {
             throw new InvalidArgumentException('Debit amount must be a positive decimal string like "100.00".');
@@ -110,7 +120,7 @@ final class WalletService
             ? $target->id
             : ($target->wallet?->id ?? throw new RuntimeException('User has no wallet to debit.'));
 
-        return DB::transaction(function () use ($walletId, $amount, $type, $idempotencyKey, $reference): WalletTransaction {
+        return DB::transaction(function () use ($walletId, $amount, $type, $idempotencyKey, $reference, $actorUserId, $note): WalletTransaction {
             $wallet = Wallet::query()->lockForUpdate()->findOrFail($walletId);
 
             $existing = WalletTransaction::query()
@@ -137,6 +147,8 @@ final class WalletService
                 'reference_type' => $reference?->getMorphClass(),
                 'reference_id' => $reference?->getKey(),
                 'idempotency_key' => $idempotencyKey,
+                'actor_user_id' => $actorUserId,
+                'note' => $note,
             ]);
 
             $wallet->forceFill([
