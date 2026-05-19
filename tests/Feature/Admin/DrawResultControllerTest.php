@@ -274,10 +274,15 @@ it('admin backfill endpoint runs the action and renders the result page', functi
         ->assertInertia(fn ($page) => $page
             ->component('admin/draws/backfill-result')
             ->has('counts.created')
-            ->has('rows', 1)
-            ->where('rows.0.draw_id', $draw->id)
-            ->where('rows.0.numbers', [1, 4])
-            ->where('rows.0.status', 'created')
+            ->where('counts.created', 1)
+            // The controller also seeds missing historical Draw rows before
+            // backfill, so total rows = N. Just assert the specific draw we
+            // care about was created with the right numbers.
+            ->has('generated')
+            ->where('rows', fn ($rows) => $rows
+                ->contains(fn (array $row): bool => $row['draw_id'] === $draw->id
+                    && $row['numbers'] === [1, 4]
+                    && $row['status'] === 'created'))
         );
 });
 

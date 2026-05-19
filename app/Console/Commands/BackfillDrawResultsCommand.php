@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Actions\Draws\EnsureDrawsForRangeAction;
 use App\Actions\Settlement\BackfillDrawResultsAction;
 use Carbon\Carbon;
 use Carbon\Exceptions\InvalidFormatException;
@@ -38,12 +39,15 @@ use Illuminate\Console\Command;
                             {--to= : End of the range (YYYY-MM-DD, Manila). Defaults to today.}
                             {--days=7 : Backfill the last N days (mutually exclusive with --from/--to).}
                             {--games= : Comma-separated list of game codes to backfill (e.g. 2d,3d). Defaults to all.}
+                            {--no-ensure : Skip the EnsureDrawsForRangeAction pre-step (reconciliation flows only).}
                             {--dry-run : Parse + report, do not write to the database.}')]
 #[Description('Backfill historical PCSO results into draw_results — does NOT settle bets.')]
 final class BackfillDrawResultsCommand extends Command
 {
-    public function handle(BackfillDrawResultsAction $action): int
-    {
+    public function handle(
+        EnsureDrawsForRangeAction $ensure,
+        BackfillDrawResultsAction $action,
+    ): int {
         try {
             [$from, $to] = $this->resolveRange();
         } catch (\InvalidArgumentException $e) {
@@ -54,6 +58,7 @@ final class BackfillDrawResultsCommand extends Command
 
         $gameCodes = $this->resolveGames();
         $dryRun = (bool) $this->option('dry-run');
+        $skipEnsure = (bool) $this->option('no-ensure');
 
         $this->info(sprintf(
             'Backfilling draws %s to %s (Manila)%s%s',
@@ -62,6 +67,16 @@ final class BackfillDrawResultsCommand extends Command
             $gameCodes !== null ? ' for games '.implode(',', $gameCodes) : '',
             $dryRun ? ' [DRY RUN — no DB writes]' : '',
         ));
+
+        if (! $skipEnsure && ! $dryRun) {
+            $ensureSummary = $ensure->execute($from, $to);
+            if ($ensureSummary['created'] > 0) {
+                $this->info(sprintf(
+                    'Seeded %d missing draw slot(s) before backfill.',
+                    $ensureSummary['created'],
+                ));
+            }
+        }
 
         $summary = $action->execute($from, $to, $gameCodes, $dryRun);
 

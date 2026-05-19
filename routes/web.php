@@ -67,6 +67,12 @@ Route::middleware(['auth', EnsureAccountSetupIsComplete::class, EnsureAdmin::cla
         Route::post('draws/backfill', [AdminDrawResultController::class, 'backfill'])
             ->name('draws.backfill');
 
+        // Refresh-friendly fallback: the POST renders an Inertia page in-place
+        // (not a redirect), so the URL bar ends up at /admin/draws/backfill.
+        // Hitting that URL with GET (refresh, back button, manual nav) sends
+        // the operator back to the list instead of a 405.
+        Route::get('draws/backfill', fn () => redirect()->route('admin.draws.index'));
+
         Route::get('draws/{draw}/result', [AdminDrawResultController::class, 'create'])
             ->name('draws.result.create');
 

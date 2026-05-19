@@ -41,6 +41,7 @@ type Row = {
 type Props = {
     from: string;
     to: string;
+    generated: number;
     counts: Counts;
     rows: Row[];
     source_label: string;
@@ -119,11 +120,16 @@ function StatChip({
 export default function BackfillResult({
     from,
     to,
+    generated,
     counts,
     rows,
     source_label,
 }: Props) {
     const total = rows.length;
+    const seededClause =
+        generated > 0
+            ? ` Seeded ${generated} missing draw slot${generated === 1 ? '' : 's'} for the range first.`
+            : '';
 
     return (
         <>
@@ -132,7 +138,7 @@ export default function BackfillResult({
                 <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                     <Heading
                         title="Backfill results"
-                        description={`Parsed ${total} draw${total === 1 ? '' : 's'} from ${source_label} between ${from} and ${to}. No bets were settled.`}
+                        description={`Parsed ${total} draw${total === 1 ? '' : 's'} from ${source_label} between ${from} and ${to}. No bets were settled.${seededClause}`}
                     />
                     <Button asChild variant="outline" className="w-full md:w-auto">
                         <Link href="/admin/draws">
@@ -142,7 +148,12 @@ export default function BackfillResult({
                     </Button>
                 </div>
 
-                <section className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <section className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+                    <StatChip
+                        label="Seeded"
+                        value={generated}
+                        tone={generated > 0 ? 'primary' : 'neutral'}
+                    />
                     <StatChip
                         label="Created"
                         value={counts.created}

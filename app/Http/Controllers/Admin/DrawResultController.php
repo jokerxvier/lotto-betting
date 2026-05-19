@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
+use App\Actions\Draws\EnsureDrawsForRangeAction;
 use App\Actions\Settlement\BackfillDrawResultsAction;
 use App\Actions\Settlement\ScrapeAndSettleAwaitingAction;
 use App\Actions\Settlement\SettleDrawAction;
@@ -203,20 +204,29 @@ final class DrawResultController extends Controller
 
     /**
      * Admin-triggered backfill of the last 7 days of PCSO results.
-     * Upserts `DrawResult` rows for past draws in the range. DOES NOT
-     * settle bets — sibling to `scrape()`, but read-mostly. Refuses to
-     * overwrite numbers on already-settled draws.
+     *
+     * Two-step:
+     *  1. `EnsureDrawsForRangeAction` seeds any missing scheduled `Draw`
+     *     rows for the range (idempotent). Without this step, backfill
+     *     can only attach results to days that already have draw rows —
+     *     a stale local DB means "Backfill 7 days" silently shows only
+     *     1–2 days worth of slots.
+     *  2. `BackfillDrawResultsAction` upserts `DrawResult` rows for those
+     *     draws. DOES NOT settle bets. Refuses to overwrite numbers on
+     *     already-settled draws.
      *
      * Returns an Inertia page (not a redirect) so the admin can see
      * every parsed number per draw before navigating away.
      */
     public function backfill(
         Request $request,
+        EnsureDrawsForRangeAction $ensure,
         BackfillDrawResultsAction $action,
     ): Response {
         $to = Carbon::now('Asia/Manila')->endOfDay();
         $from = $to->copy()->subDays(7)->startOfDay();
 
+        $ensureSummary = $ensure->execute($from, $to);
         $summary = $action->execute($from, $to);
         $c = $summary['counts'];
         $skipped = $c['skipped_no_match'] + $c['skipped_settled'] + $c['skipped_invalid'];
@@ -225,12 +235,14 @@ final class DrawResultController extends Controller
             'user_id' => $request->user()?->id,
             'from' => $summary['from'],
             'to' => $summary['to'],
+            'generated' => $ensureSummary['created'],
             'counts' => $c,
         ]);
 
         return Inertia::render('admin/draws/backfill-result', [
             'from' => $summary['from'],
             'to' => $summary['to'],
+            'generated' => $ensureSummary['created'],
             'counts' => [
                 'created' => $c['created'],
                 'updated' => $c['updated'],

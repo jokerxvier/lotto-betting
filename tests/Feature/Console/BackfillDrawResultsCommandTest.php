@@ -28,7 +28,7 @@ it('default range = last 7 days (Manila) when no --from/--to/--days given', func
     // Pin "now" so the default range is deterministic.
     Carbon::setTestNow(Carbon::create(2026, 5, 17, 23, 0, 0, 'Asia/Manila'));
 
-    $this->artisan('draws:backfill-results')
+    $this->artisan('draws:backfill-results', ['--no-ensure' => true])
         ->expectsOutputToContain('Backfilling draws 2026-05-10 to 2026-05-17 (Manila)')
         ->expectsOutputToContain('No draws found in the requested range')
         ->assertSuccessful();
@@ -49,6 +49,7 @@ it('creates a DrawResult when --from/--to bracket a real draw', function () {
     $this->artisan('draws:backfill-results', [
         '--from' => '2026-05-17',
         '--to' => '2026-05-17',
+        '--no-ensure' => true,
     ])
         ->expectsOutputToContain('Total: 1 created')
         ->assertSuccessful();
@@ -69,11 +70,13 @@ it('accepts --from / --to and validates from <= to', function () {
     $this->artisan('draws:backfill-results', [
         '--from' => '2026-05-17',
         '--to' => '2026-05-17',
+        '--no-ensure' => true,
     ])->assertSuccessful();
 
     $this->artisan('draws:backfill-results', [
         '--from' => '2026-05-17',
         '--to' => '2026-05-15',
+        '--no-ensure' => true,
     ])
         ->expectsOutputToContain('--from must be on or before --to')
         ->assertFailed();
@@ -120,6 +123,7 @@ it('filters by --games', function () {
         '--from' => '2026-05-17',
         '--to' => '2026-05-17',
         '--games' => '2d',
+        '--no-ensure' => true,
     ])->assertSuccessful();
 
     expect(DrawResult::query()->where('draw_id', $twoDraw->id)->exists())->toBeTrue()
@@ -140,6 +144,7 @@ it('--dry-run prints the table but writes nothing', function () {
         '--from' => '2026-05-17',
         '--to' => '2026-05-17',
         '--dry-run' => true,
+        '--no-ensure' => true,
     ])
         ->expectsOutputToContain('[DRY RUN')
         ->expectsOutputToContain('Total: 1 created')
@@ -165,7 +170,40 @@ it('warns "No draws found" when the range is valid but empty', function () {
     $this->artisan('draws:backfill-results', [
         '--from' => '2020-01-01',
         '--to' => '2020-01-02',
+        '--no-ensure' => true,
     ])
         ->expectsOutputToContain('No draws found in the requested range')
         ->assertSuccessful();
+});
+
+it('seeds missing Draw rows for the range before backfill (default behavior)', function () {
+    Http::fake(['gmanetwork.com/*' => Http::response(backfillGmaFixture(), 200)]);
+
+    // No Draw rows exist for 2026-05-17 yet — the ensure step should seed them.
+    expect(Draw::query()->whereDate('draw_at', '2026-05-17')->count())->toBe(0);
+
+    $this->artisan('draws:backfill-results', [
+        '--from' => '2026-05-17',
+        '--to' => '2026-05-17',
+    ])
+        ->expectsOutputToContain('Seeded')
+        ->assertSuccessful();
+
+    // 2 active games × 3 slots = 6 historical Draw rows created.
+    expect(Draw::query()->whereDate('draw_at', '2026-05-17')->count())->toBe(6);
+});
+
+it('--no-ensure opts out of the seed step (strict reconciliation flow)', function () {
+    Http::fake();
+
+    $this->artisan('draws:backfill-results', [
+        '--from' => '2026-05-17',
+        '--to' => '2026-05-17',
+        '--no-ensure' => true,
+    ])
+        ->doesntExpectOutputToContain('Seeded')
+        ->expectsOutputToContain('No draws found in the requested range')
+        ->assertSuccessful();
+
+    expect(Draw::query()->whereDate('draw_at', '2026-05-17')->count())->toBe(0);
 });
