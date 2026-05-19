@@ -81,6 +81,43 @@ final class PcsoResultScraper
     }
 
     /**
+     * Pre-warm the per-date cache for every Manila day in [from, to] using
+     * the pcso-parser API's range endpoint. Safe to call regardless of
+     * fetcher mode — no-op outside `pcso_api`. Safe on any failure —
+     * audit-logs and returns, falling back to per-day fetches inside the
+     * caller's iteration.
+     *
+     * Purpose: lets `BackfillDrawResultsAction` collapse N×daily roundtrips
+     * into a single upstream request, without changing the per-draw lookup
+     * path (which still reads `lotto.scraper:pcso_api_rows:{$isoDate}`).
+     */
+    public function primeCacheForRange(CarbonInterface $from, CarbonInterface $to): void
+    {
+        if ($this->settings->get('scraper.suggestions_enabled', true) !== true) {
+            return;
+        }
+        if ($this->fetcherKind() !== 'pcso_api') {
+            return;
+        }
+
+        $fromIso = $from->copy()->setTimezone('Asia/Manila')->format('Y-m-d');
+        $toIso = $to->copy()->setTimezone('Asia/Manila')->format('Y-m-d');
+        $ttl = (int) config('lotto.scraper.cache_ttl_seconds', 60);
+
+        try {
+            $byDate = $this->pcsoApiClient()->fetchForRange($fromIso, $toIso);
+        } catch (Throwable $e) {
+            $this->logFailure($e->getMessage(), 'range', $from);
+
+            return;
+        }
+
+        foreach ($byDate as $isoDate => $rows) {
+            Cache::put("lotto.scraper:pcso_api_rows:{$isoDate}", $rows, $ttl);
+        }
+    }
+
+    /**
      * @return list<int>|null
      */
     private function fetchViaHttp(ScraperDriver $driver, string $gameCode, CarbonInterface $drawAt): ?array

@@ -281,3 +281,78 @@ it('refuses pcso_api fetcher with a non-pcso_api source', function () {
 
     Http::assertNothingSent();
 });
+
+// ── primeCacheForRange — backfill optimization path ──────────────────────────
+
+it('primeCacheForRange is a no-op outside the pcso_api fetcher', function () {
+    config()->set('lotto.scraper.source', 'gma');
+    config()->set('lotto.scraper.fetcher', 'http');
+    Http::fake();
+
+    $from = Carbon::create(2026, 5, 13, 0, 0, 0, 'Asia/Manila');
+    $to = Carbon::create(2026, 5, 14, 23, 59, 0, 'Asia/Manila');
+    $this->scraper->primeCacheForRange($from, $to);
+
+    Http::assertNothingSent();
+});
+
+it('primeCacheForRange populates the per-date cache so fetchLatest sends zero HTTP', function () {
+    config()->set('lotto.scraper.source', 'pcso_api');
+    config()->set('lotto.scraper.fetcher', 'pcso_api');
+    config()->set('lotto.scraper.api_url', 'http://127.0.0.1:3001');
+
+    Http::fake([
+        '127.0.0.1:3001/*' => Http::response([
+            'from' => '2026-05-13',
+            'to' => '2026-05-14',
+            'totals' => ['results' => 2, 'prizes' => 0, 'days' => 2],
+            'days' => [
+                ['date' => '2026-05-13', 'results' => [
+                    ['_id' => '2026-05-13-2D-500PM', 'game' => '2D', 'date' => 'May 13, 2026', 'winning' => '13-25'],
+                ]],
+                ['date' => '2026-05-14', 'results' => [
+                    ['_id' => '2026-05-14-2D-200PM', 'game' => '2D', 'date' => 'May 14, 2026', 'winning' => '07-08'],
+                ]],
+            ],
+        ], 200),
+    ]);
+
+    $from = Carbon::create(2026, 5, 13, 0, 0, 0, 'Asia/Manila');
+    $to = Carbon::create(2026, 5, 14, 23, 59, 0, 'Asia/Manila');
+    $this->scraper->primeCacheForRange($from, $to);
+
+    // Both per-draw lookups should hit the primed cache — no extra HTTP.
+    $a = Carbon::create(2026, 5, 13, 17, 0, 0, 'Asia/Manila')->setTimezone('UTC');
+    $b = Carbon::create(2026, 5, 14, 14, 0, 0, 'Asia/Manila')->setTimezone('UTC');
+
+    expect($this->scraper->fetchLatest('2d', $a))->toBe([13, 25])
+        ->and($this->scraper->fetchLatest('2d', $b))->toBe([7, 8]);
+
+    // One HTTP request total — the prime call. Per-draw lookups all hit cache.
+    Http::assertSentCount(1);
+});
+
+it('primeCacheForRange swallows upstream failure and falls back to per-day fetches', function () {
+    config()->set('lotto.scraper.source', 'pcso_api');
+    config()->set('lotto.scraper.fetcher', 'pcso_api');
+    config()->set('lotto.scraper.api_url', 'http://127.0.0.1:3001');
+
+    // First call (range prime) fails; second call (per-day fetchLatest) succeeds.
+    Http::fake([
+        '127.0.0.1:3001/*' => Http::sequence()
+            ->push(['error' => 'boom'], 502)
+            ->push([
+                'results' => [
+                    ['_id' => '2026-05-13-2D-500PM', 'game' => '2D', 'date' => 'May 13, 2026', 'winning' => '13-25'],
+                ],
+            ], 200),
+    ]);
+
+    $from = Carbon::create(2026, 5, 13, 0, 0, 0, 'Asia/Manila');
+    $to = Carbon::create(2026, 5, 13, 23, 59, 0, 'Asia/Manila');
+    $this->scraper->primeCacheForRange($from, $to);
+
+    // Range failed → cache empty → fetchLatest falls through to its own per-day call.
+    $drawAt = Carbon::create(2026, 5, 13, 17, 0, 0, 'Asia/Manila')->setTimezone('UTC');
+    expect($this->scraper->fetchLatest('2d', $drawAt))->toBe([13, 25]);
+});

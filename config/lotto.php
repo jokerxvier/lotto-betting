@@ -38,22 +38,23 @@ return [
     | behaves when enabled, not whether it's enabled at all.
     */
     'scraper' => [
-        // Source driver: 'gma' (recommended — gmanetwork.com, plain HTTP, no
-        // WAF/blocks), 'lottopcso' (legacy — blocked from PH ISPs by CICC
+        // Source driver: 'pcso_api' (default — standalone pcso-parser REST
+        // API daemon, requires the pcso_api fetcher; has historical archive
+        // coverage), 'gma' (gmanetwork.com, plain HTTP, latest-page only —
+        // no archive), 'lottopcso' (legacy — blocked from PH ISPs by CICC
         // DNS), 'pcso_gov' (official — behind Akamai bot-WAF, requires the
-        // Playwright sidecar fetcher), or 'pcso_api' (standalone pcso-parser
-        // REST API daemon — requires the pcso_api fetcher).
-        'source' => env('LOTTO_SCRAPER_SOURCE', 'lottopcso'),
-        'source_label' => env('LOTTO_SCRAPER_SOURCE_LABEL', 'lottopcso.com'),
+        // Playwright sidecar fetcher).
+        'source' => env('LOTTO_SCRAPER_SOURCE', 'pcso_api'),
+        'source_label' => env('LOTTO_SCRAPER_SOURCE_LABEL', 'pcso-parser-api'),
         'cache_ttl_seconds' => (int) env('LOTTO_SCRAPER_CACHE_TTL', 60),
         'http_timeout_seconds' => (int) env('LOTTO_SCRAPER_HTTP_TIMEOUT', 8),
 
-        // Fetcher: 'http' (default — plain Guzzle, for any non-WAF source),
-        // 'playwright' (calls the standalone scraper/ sidecar at sidecar_url,
-        // for pcso.gov.ph behind Akamai), or 'pcso_api' (calls the
-        // standalone pcso-parser REST API at api_url; pairs with the
-        // 'pcso_api' source driver).
-        'fetcher' => env('LOTTO_SCRAPER_FETCHER', 'http'),
+        // Fetcher: 'pcso_api' (default — calls the standalone pcso-parser
+        // REST API at api_url; pairs with the 'pcso_api' source driver),
+        // 'http' (plain Guzzle, for any non-WAF HTML source), or
+        // 'playwright' (calls the standalone scraper/ sidecar at
+        // sidecar_url, for pcso.gov.ph behind Akamai).
+        'fetcher' => env('LOTTO_SCRAPER_FETCHER', 'pcso_api'),
         'sidecar_url' => env('LOTTO_SCRAPER_SIDECAR_URL', 'http://127.0.0.1:8787'),
         'sidecar_token' => env('LOTTO_SCRAPER_SIDECAR_TOKEN', ''),
         'sidecar_timeout_seconds' => (int) env('LOTTO_SCRAPER_SIDECAR_TIMEOUT', 30),

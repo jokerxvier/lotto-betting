@@ -104,6 +104,102 @@ it('throws when the response is missing the `results` array', function () {
         ->toThrow(RuntimeException::class, 'pcso_api_malformed_response');
 });
 
+it('POSTs to /fetch with from/to and returns rows grouped by ISO date', function () {
+    Http::fake([
+        '127.0.0.1:3001/fetch' => Http::response([
+            'from' => '2026-05-13',
+            'to' => '2026-05-14',
+            'fetchedAt' => '2026-05-19T06:00:00.000Z',
+            'totals' => ['results' => 3, 'prizes' => 0, 'days' => 2],
+            'days' => [
+                [
+                    'date' => '2026-05-13',
+                    'url' => 'https://www.lottopcso.com/pcso-lotto-result-may-13-2026',
+                    'counts' => ['results' => 2, 'prizes' => 0],
+                    'results' => [
+                        ['_id' => '2026-05-13-2D-500PM', 'game' => '2D', 'date' => 'May 13, 2026', 'time' => '5:00 PM', 'winning' => '13-25'],
+                        ['_id' => '2026-05-13-3D-500PM', 'game' => '3D', 'date' => 'May 13, 2026', 'time' => '5:00 PM', 'winning' => '3-2-4'],
+                    ],
+                ],
+                [
+                    'date' => '2026-05-14',
+                    'url' => 'https://www.lottopcso.com/pcso-lotto-result-may-14-2026',
+                    'counts' => ['results' => 1, 'prizes' => 0],
+                    'results' => [
+                        ['_id' => '2026-05-14-2D-200PM', 'game' => '2D', 'date' => 'May 14, 2026', 'time' => '2:00 PM', 'winning' => '07-08'],
+                    ],
+                ],
+            ],
+        ], 200),
+    ]);
+
+    $byDate = (new PcsoParserApiClient('http://127.0.0.1:3001'))
+        ->fetchForRange('2026-05-13', '2026-05-14');
+
+    expect($byDate)->toHaveKeys(['2026-05-13', '2026-05-14'])
+        ->and($byDate['2026-05-13'])->toHaveCount(2)
+        ->and($byDate['2026-05-13'][0]['_id'])->toBe('2026-05-13-2D-500PM')
+        ->and($byDate['2026-05-14'])->toHaveCount(1)
+        ->and($byDate['2026-05-14'][0]['_id'])->toBe('2026-05-14-2D-200PM');
+
+    Http::assertSent(function ($req): bool {
+        return str_contains($req->url(), '127.0.0.1:3001/fetch')
+            && $req['from'] === '2026-05-13'
+            && $req['to'] === '2026-05-14';
+    });
+});
+
+it('range: throws when the response is missing the `days` array', function () {
+    Http::fake([
+        '127.0.0.1:3001/*' => Http::response(['from' => '2026-05-13', 'to' => '2026-05-14'], 200),
+    ]);
+
+    expect(fn () => (new PcsoParserApiClient('http://127.0.0.1:3001'))
+        ->fetchForRange('2026-05-13', '2026-05-14'))
+        ->toThrow(RuntimeException::class, 'pcso_api_malformed_range_response');
+});
+
+it('range: skips days missing date/results and drops malformed rows', function () {
+    Http::fake([
+        '127.0.0.1:3001/*' => Http::response([
+            'days' => [
+                ['date' => '2026-05-13', 'results' => [
+                    ['_id' => '2026-05-13-2D-500PM', 'game' => '2D', 'date' => 'May 13, 2026', 'winning' => '13-25'],
+                    ['_id' => '2026-05-13-2D-200PM', 'game' => '2D', 'date' => 'May 13, 2026'], // no winning
+                ]],
+                ['results' => []], // no date
+                ['date' => '2026-05-14'], // no results
+                'not-an-array',
+            ],
+        ], 200),
+    ]);
+
+    $byDate = (new PcsoParserApiClient('http://127.0.0.1:3001'))
+        ->fetchForRange('2026-05-13', '2026-05-14');
+
+    expect($byDate)->toHaveCount(1)
+        ->and($byDate['2026-05-13'])->toHaveCount(1)
+        ->and($byDate['2026-05-13'][0]['_id'])->toBe('2026-05-13-2D-500PM');
+});
+
+it('range: retries once on 429 then returns on the second response', function () {
+    Http::fake([
+        '127.0.0.1:3001/*' => Http::sequence()
+            ->push(['error' => 'busy'], 429)
+            ->push(['days' => [
+                ['date' => '2026-05-13', 'results' => [
+                    ['_id' => '2026-05-13-2D-500PM', 'game' => '2D', 'date' => 'May 13, 2026', 'winning' => '13-25'],
+                ]],
+            ]], 200),
+    ]);
+
+    $byDate = (new PcsoParserApiClient('http://127.0.0.1:3001'))
+        ->fetchForRange('2026-05-13', '2026-05-13');
+
+    expect($byDate['2026-05-13'])->toHaveCount(1);
+    Http::assertSentCount(2);
+});
+
 it('drops rows missing any of _id/game/date/winning', function () {
     Http::fake([
         '127.0.0.1:3001/*' => Http::response([

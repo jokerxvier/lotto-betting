@@ -63,6 +63,12 @@ final class BackfillDrawResultsAction
         $fromUtc = $from->copy()->setTimezone('Asia/Manila')->startOfDay()->setTimezone('UTC');
         $toUtc = $to->copy()->setTimezone('Asia/Manila')->endOfDay()->setTimezone('UTC');
 
+        // One range request pre-populates the per-date cache so the
+        // per-draw fetchLatest() calls below all hit cache. Silent no-op
+        // outside the pcso_api fetcher and on any failure — backfill
+        // falls back to per-day fetches without behavioral change.
+        $this->scraper->primeCacheForRange($from, $to);
+
         $query = Draw::query()
             ->with(['game', 'result'])
             ->whereBetween('draw_at', [$fromUtc, $toUtc])

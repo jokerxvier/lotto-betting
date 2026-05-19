@@ -24,7 +24,7 @@ A Philippine real-money lotto betting web app (PCSO-style: 2D / EZ2 and 3D / Swe
 
 Laravel 13 + PHP 8.3 · Inertia v3 + React 19 + TypeScript strict · Tailwind v4 + shadcn/ui (new-york) · `sonner` toasts · `lucide-react` icons · Zustand (UI) + TanStack Query (polling) · PostgreSQL 16 · Redis + Horizon · Laravel Reverb (DB driver) · `brick/money` · Pest + Playwright · Forge.
 
-> Today the repo is the fresh `laravel/react-starter-kit` + Fortify + Wayfinder on **SQLite + `database` driver** for cache/queue/session. Items in the line above tagged Redis/Horizon/Reverb/Postgres/Zustand/TanStack/`brick/money` are **not yet installed** — don't `use`/`import` them before they exist. Ask before `composer require` / `npm install`.
+> Today the repo is the fresh `laravel/react-starter-kit` + Fortify + Wayfinder on **SQLite + `database` driver** for cache/queue/session. Items in the line above tagged Redis/Horizon/Reverb/Postgres/Zustand/TanStack are **not yet installed** — don't `use`/`import` them before they exist. Ask before `composer require` / `npm install`.
 
 ## Commands
 
@@ -41,6 +41,10 @@ Site is served by **Herd** at `http://lotto.test` — don't run `php artisan ser
 | Type-check TS / lint / format | `npm run types:check` · `npm run lint` · `npm run format` |
 | Full CI gate locally | `composer run ci:check` |
 | Routes | `php artisan route:list --except-vendor` |
+| Generate upcoming draws | `php artisan lotto:generate-upcoming-draws` |
+| Auto-settle (cron-fed) | `php artisan lotto:auto-settle-draws` |
+| Backfill historical results | `php artisan lotto:backfill-draw-results {from} {to}` |
+| Reset admin PIN | `php artisan admin:set-password` |
 
 Prefer Boost MCP tools (`database-query`, `database-schema`, `read-log-entries`, `last-error`, `browser-logs`) over `tinker` / shell.
 
@@ -53,6 +57,14 @@ Request → FormRequest → Controller (thin) → Action (one verb)
 ```
 
 Frontend: Inertia page → AppLayout → domain components (`components/lotto/`, `components/wallet/`) → shadcn primitives (`components/ui/`).
+
+### PCSO results scraper
+
+Pluggable drivers in `app/Services/Scrapers/` resolve via `LOTTO_SCRAPER_SOURCE` + `LOTTO_SCRAPER_FETCHER`. The `playwright` fetcher talks to a separate **Node sidecar** in `scraper/` (Playwright + Express, port 8787) that exists because `pcso.gov.ph` sits behind Akamai's bot-WAF and rejects plain `Http::get()`. The sidecar is **not** part of the Vite bundle — it has its own `package.json` and its own deploy steps (see `scraper/README.md`). On Forge it runs as a daemon.
+
+Driver selection knobs (`.env`):
+- `LOTTO_SCRAPER_SOURCE` — `lottopcso` · `pcso_gov` · `gma_network` · `pcso_api`
+- `LOTTO_SCRAPER_FETCHER` — `http` · `playwright` · `pcso_api`
 
 ## When to load which `rules/` doc
 
