@@ -1,19 +1,11 @@
-import { Link } from '@inertiajs/react';
 import {
     flexRender,
     getCoreRowModel,
     useReactTable,
 } from '@tanstack/react-table';
 import type { ColumnDef } from '@tanstack/react-table';
-import {
-    Pagination,
-    PaginationContent,
-    PaginationEllipsis,
-    PaginationItem,
-    PaginationLink,
-    PaginationNext,
-    PaginationPrevious,
-} from '@/components/ui/pagination';
+import { PaginatorLinks, PaginatorSummary } from '@/components/paginator-links';
+import type { PaginatorMeta } from '@/components/paginator-links';
 import {
     Table,
     TableBody,
@@ -23,23 +15,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 
-/**
- * Shape of Laravel's LengthAwarePaginator JSON: only the bits the data
- * table needs to render server-driven pagination links + summary.
- */
-export type PaginatorMeta = {
-    current_page: number;
-    last_page: number;
-    per_page: number;
-    total: number;
-    from: number | null;
-    to: number | null;
-    links: Array<{
-        url: string | null;
-        label: string;
-        active: boolean;
-    }>;
-};
+export type { PaginatorMeta };
 
 type Props<TData> = {
     columns: ColumnDef<TData, unknown>[];
@@ -123,9 +99,7 @@ export function DataTable<TData>({
 
             {meta && meta.last_page > 1 && (
                 <div className="flex flex-col items-center justify-between gap-2 sm:flex-row">
-                    <p className="text-xs text-muted-foreground">
-                        Showing {meta.from ?? 0}–{meta.to ?? 0} of {meta.total}
-                    </p>
+                    <PaginatorSummary meta={meta} />
                     <PaginatorLinks
                         meta={meta}
                         preserveState={preserveStateOnPaginate}
@@ -134,84 +108,5 @@ export function DataTable<TData>({
                 </div>
             )}
         </div>
-    );
-}
-
-function PaginatorLinks({
-    meta,
-    preserveState,
-    only,
-}: {
-    meta: PaginatorMeta;
-    preserveState: boolean;
-    only?: string[];
-}) {
-    const inertiaProps = {
-        preserveState,
-        preserveScroll: true,
-        ...(only && only.length > 0 ? { only } : {}),
-    };
-
-    const head = meta.links[0];
-    const tail = meta.links[meta.links.length - 1];
-    const numbered = meta.links.slice(1, -1);
-
-    return (
-        <Pagination className="mx-0 w-auto justify-end">
-            <PaginationContent>
-                {head && (
-                    <PaginationItem>
-                        {head.url ? (
-                            <Link href={head.url} {...inertiaProps}>
-                                <PaginationPrevious />
-                            </Link>
-                        ) : (
-                            <PaginationPrevious
-                                aria-disabled
-                                className="pointer-events-none opacity-50"
-                            />
-                        )}
-                    </PaginationItem>
-                )}
-                {numbered.map((link, idx) =>
-                    link.label === '...' ? (
-                        <PaginationItem key={`ellipsis-${idx}`}>
-                            <PaginationEllipsis />
-                        </PaginationItem>
-                    ) : (
-                        <PaginationItem key={link.label + idx}>
-                            {link.url ? (
-                                <Link href={link.url} {...inertiaProps}>
-                                    <PaginationLink isActive={link.active}>
-                                        {link.label}
-                                    </PaginationLink>
-                                </Link>
-                            ) : (
-                                <PaginationLink
-                                    aria-disabled
-                                    className="pointer-events-none opacity-50"
-                                >
-                                    {link.label}
-                                </PaginationLink>
-                            )}
-                        </PaginationItem>
-                    ),
-                )}
-                {tail && (
-                    <PaginationItem>
-                        {tail.url ? (
-                            <Link href={tail.url} {...inertiaProps}>
-                                <PaginationNext />
-                            </Link>
-                        ) : (
-                            <PaginationNext
-                                aria-disabled
-                                className="pointer-events-none opacity-50"
-                            />
-                        )}
-                    </PaginationItem>
-                )}
-            </PaginationContent>
-        </Pagination>
     );
 }
