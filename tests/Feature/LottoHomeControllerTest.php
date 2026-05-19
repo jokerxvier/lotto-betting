@@ -149,14 +149,73 @@ it('hides inactive games from the home page', function () {
     );
 });
 
-it('ignores draws past their cutoff when picking the next open draw', function () {
+it('surfaces a drawn-but-not-yet-settled result so display is decoupled from settlement', function () {
+    $user = User::factory()->withWallet('500.00')->create();
+    $twoD = Game::query()->where('code', '2d')->firstOrFail();
+
+    // Older, fully-settled draw with numbers — would have been shown
+    // under the old "status=settled" filter.
+    $older = Draw::factory()->for($twoD)->create([
+        'draw_at' => now()->subDay()->setTime(17, 0),
+        'cutoff_at' => now()->subDay()->setTime(16, 50),
+        'status' => 'settled',
+    ]);
+    DrawResult::factory()->for($older)->create(['numbers' => [8, 16]]);
+
+    // Today's 5PM slot: scraper has attached the result but admin hasn't
+    // published it yet, so the draw is still `scheduled`. Should be the
+    // one we surface — display follows the result, not settlement state.
+    $todays = Draw::factory()->for($twoD)->create([
+        'draw_at' => now()->subHours(3),
+        'cutoff_at' => now()->subHours(3)->subMinutes(10),
+        'status' => 'scheduled',
+    ]);
+    DrawResult::factory()->for($todays)->create(['numbers' => [17, 23]]);
+
+    $this->actingAs($user)
+        ->get('/lotto')
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('games.0.latest_result_numbers', [17, 23])
+        );
+});
+
+it('skips drawn slots that have no result yet and shows the previous one with numbers', function () {
+    $user = User::factory()->withWallet('500.00')->create();
+    $twoD = Game::query()->where('code', '2d')->firstOrFail();
+
+    // Older settled with numbers.
+    $older = Draw::factory()->for($twoD)->create([
+        'draw_at' => now()->subHours(6),
+        'cutoff_at' => now()->subHours(6)->subMinutes(10),
+        'status' => 'settled',
+    ]);
+    DrawResult::factory()->for($older)->create(['numbers' => [3, 11]]);
+
+    // Most recent slot — drawn but the scraper hasn't returned numbers
+    // yet (no DrawResult). Don't let it mask the previous slot.
+    Draw::factory()->for($twoD)->create([
+        'draw_at' => now()->subMinutes(20),
+        'cutoff_at' => now()->subMinutes(30),
+        'status' => 'scheduled',
+    ]);
+
+    $this->actingAs($user)
+        ->get('/lotto')
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('games.0.latest_result_numbers', [3, 11])
+        );
+});
+
+it('ignores stale orphan draws (no result, beyond the 6-hour lookback)', function () {
     $user = User::factory()->withWallet()->create();
     $twoD = Game::query()->where('code', '2d')->firstOrFail();
 
-    // Past cutoff, still status=scheduled → not "next"
+    // Pre-settlement-pipeline leftover: scheduled, no result, days old.
     Draw::factory()->for($twoD)->create([
-        'draw_at' => now()->subHour(),
-        'cutoff_at' => now()->subHours(2),
+        'draw_at' => now()->subDays(2),
+        'cutoff_at' => now()->subDays(2)->subMinutes(60),
         'status' => 'scheduled',
     ]);
 
@@ -165,6 +224,109 @@ it('ignores draws past their cutoff when picking the next open draw', function (
     $this->get('/lotto')->assertOk()->assertInertia(fn ($page) => $page
         ->where('games.0.next_draw_id', null)
     );
+});
+
+it('surfaces a recently-drawn slot awaiting its scraped result as next_draw', function () {
+    $user = User::factory()->withWallet()->create();
+    $twoD = Game::query()->where('code', '2d')->firstOrFail();
+
+    // 9PM happened 3 minutes ago, scraper hasn't returned numbers yet.
+    // Card should stay on this slot until the result attaches.
+    $awaiting = Draw::factory()->for($twoD)->create([
+        'draw_at' => now()->subMinutes(3),
+        'cutoff_at' => now()->subHour()->subMinutes(3),
+        'status' => 'scheduled',
+    ]);
+    // Tomorrow's 2PM exists and is bettable — shouldn't override the
+    // still-awaiting today slot.
+    Draw::factory()->for($twoD)->open()->create([
+        'draw_at' => now()->addDay(),
+        'cutoff_at' => now()->addDay()->subMinutes(10),
+    ]);
+
+    $this->actingAs($user)
+        ->get('/lotto')
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('games.0.next_draw_id', $awaiting->id)
+        );
+});
+
+it('moves on to the next chronological slot once the current draw has its result attached', function () {
+    $user = User::factory()->withWallet()->create();
+    $twoD = Game::query()->where('code', '2d')->firstOrFail();
+
+    // Today's 9PM is drawn and the scraper has attached numbers → done.
+    $drawn = Draw::factory()->for($twoD)->create([
+        'draw_at' => now()->subMinutes(5),
+        'cutoff_at' => now()->subHour()->subMinutes(5),
+        'status' => 'scheduled',
+    ]);
+    DrawResult::factory()->for($drawn)->create(['numbers' => [12, 7]]);
+
+    // Tomorrow's 2PM is the new "next".
+    $next = Draw::factory()->for($twoD)->open()->create([
+        'draw_at' => now()->addDay(),
+        'cutoff_at' => now()->addDay()->subMinutes(10),
+    ]);
+
+    $this->actingAs($user)
+        ->get('/lotto')
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('games.0.next_draw_id', $next->id)
+        );
+});
+
+it('surfaces a closed-window draw (cutoff passed, draw_at still future) as next_draw', function () {
+    $user = User::factory()->withWallet()->create();
+    $twoD = Game::query()->where('code', '2d')->firstOrFail();
+
+    // Tonight's 9PM: betting closed at 8PM but the draw is in ~1h.
+    // The card should still surface this as "next" so the UI can render
+    // a disabled NEW BET + CLOSED badge per UI_FLOWS.md.
+    $closing = Draw::factory()->for($twoD)->create([
+        'draw_at' => now()->addMinutes(30),
+        'cutoff_at' => now()->subMinutes(30),
+        'status' => 'scheduled',
+    ]);
+    // A clean future draw with cutoff still ahead — shouldn't override
+    // the closer-in-time draw.
+    Draw::factory()->for($twoD)->open()->create([
+        'draw_at' => now()->addDay(),
+        'cutoff_at' => now()->addDay()->subMinutes(10),
+    ]);
+
+    $this->actingAs($user)
+        ->get('/lotto')
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('games.0.next_draw_id', $closing->id)
+        );
+});
+
+it('excludes closed-window draws from upcoming_draws (advance bet sheet)', function () {
+    $user = User::factory()->withWallet()->create();
+    $twoD = Game::query()->where('code', '2d')->firstOrFail();
+
+    // Closed-window draw — should be `next` but NOT in upcoming_draws.
+    Draw::factory()->for($twoD)->create([
+        'draw_at' => now()->addMinutes(30),
+        'cutoff_at' => now()->subMinutes(30),
+        'status' => 'scheduled',
+    ]);
+    $bettable = Draw::factory()->for($twoD)->open()->create([
+        'draw_at' => now()->addDay(),
+        'cutoff_at' => now()->addDay()->subMinutes(10),
+    ]);
+
+    $this->actingAs($user)
+        ->get('/lotto')
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('games.0.upcoming_draws', 1)
+            ->where('games.0.upcoming_draws.0.id', $bettable->id)
+        );
 });
 
 it('skips the payout label when the target bet type is inactive', function () {

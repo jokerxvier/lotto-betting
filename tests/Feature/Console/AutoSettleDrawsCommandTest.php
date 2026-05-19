@@ -180,6 +180,68 @@ it('is idempotent: re-running after a successful settle is a no-op', function ()
     expect(DrawResult::query()->where('draw_id', $draw->id)->count())->toBe(1);
 });
 
+it('settles a draw whose DrawResult was pre-written by the backfill cron (no scraper call)', function () {
+    (new SettingsService)->set('scraper.auto_publish_enabled', true);
+    $game = Game::query()->where('code', '2d')->firstOrFail();
+    $drawAt = now()->setTime(17, 0)->subDay();
+    $draw = Draw::factory()->for($game)->open()->create([
+        'draw_at' => $drawAt,
+        'cutoff_at' => (clone $drawAt)->subMinutes(60),
+    ]);
+
+    // backfill-results already wrote the row, but didn't settle bets.
+    DrawResult::factory()->for($draw)->create([
+        'numbers' => [1, 4],
+        'published_at' => now(),
+    ]);
+
+    $player = User::factory()->withWallet('100.00')->create();
+    autoBet($player, $draw, 'target', [1, 4], '5500.00', 'k-pre-attached-win');
+
+    // Hard contract: if the scraper is called when a result is already
+    // attached, we've done it wrong.
+    Http::fake([
+        'lottopcso.com/*' => Http::response(
+            'should-not-be-fetched',
+            500,
+        ),
+    ]);
+
+    $this->artisan('draws:auto-settle')->assertSuccessful();
+
+    expect($draw->fresh()->status)->toBe('settled')
+        ->and(Bet::query()->where('idempotency_key', 'k-pre-attached-win')->first()->status)->toBe('won')
+        ->and($player->wallet->fresh()->balance)->toEqual('5600.00')
+        ->and(DrawResult::query()->where('draw_id', $draw->id)->count())->toBe(1);
+
+    Http::assertNothingSent();
+});
+
+it('skips a pre-attached result whose numbers are out of range (defense in depth)', function () {
+    (new SettingsService)->set('scraper.auto_publish_enabled', true);
+    $game = Game::query()->where('code', '2d')->firstOrFail(); // range 1-31
+    $drawAt = now()->setTime(17, 0)->subDay();
+    $draw = Draw::factory()->for($game)->open()->create([
+        'draw_at' => $drawAt,
+        'cutoff_at' => (clone $drawAt)->subMinutes(60),
+    ]);
+
+    // Persisted-but-corrupt result row — e.g. an earlier bad scraper run
+    // somehow slipped past validation. The settler must refuse to act on it.
+    DrawResult::factory()->for($draw)->create([
+        'numbers' => [99, 4],
+        'published_at' => now(),
+    ]);
+
+    Http::fake();
+
+    $this->artisan('draws:auto-settle')->assertSuccessful();
+
+    expect($draw->fresh()->status)->not->toBe('settled');
+
+    Http::assertNothingSent();
+});
+
 it('--draw=N processes only that draw', function () {
     (new SettingsService)->set('scraper.auto_publish_enabled', true);
     $game = Game::query()->where('code', '2d')->firstOrFail();

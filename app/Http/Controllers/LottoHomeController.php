@@ -21,17 +21,25 @@ final class LottoHomeController extends Controller
             ->get();
 
         $cards = $games->map(function (Game $game): array {
+            // Display is decoupled from settlement: as soon as the scraper
+            // attaches a DrawResult we surface the numbers on the home
+            // card, even if the Draw is still `scheduled` (i.e. bets on
+            // that draw haven't been paid out yet — that's the admin's
+            // call). Filtering on `whereHas('result')` keeps a freshly-
+            // drawn slot without numbers (server delay between draw_at
+            // and scrape) from masking the previous slot's result.
             $latest = Draw::query()
                 ->where('game_id', $game->id)
-                ->where('status', 'settled')
+                ->whereHas('result')
+                ->where('draw_at', '<=', now())
                 ->with('result')
                 ->orderByDesc('draw_at')
                 ->first();
 
-            // All scheduled draws in the next 7-day window for this game.
-            // The first one (by cutoff) is the "next" we surface as a
-            // dedicated convenience; the full list powers the ADVANCE
-            // bottom sheet so a user can bet on any future draw.
+            // Bettable scheduled draws in the next 7 days — powers the
+            // ADVANCE bottom sheet so a user can bet on any future draw.
+            // `cutoff_at > now()` keeps closed-window draws out of the
+            // advance list because they can't be bet on.
             $upcoming = Draw::query()
                 ->where('game_id', $game->id)
                 ->where('status', 'scheduled')
@@ -40,7 +48,22 @@ final class LottoHomeController extends Controller
                 ->orderBy('cutoff_at')
                 ->get(['id', 'draw_at', 'cutoff_at', 'status']);
 
-            $next = $upcoming->first();
+            // The headline "next draw" stays on a slot until its result
+            // is attached — covers the full lifecycle:
+            //   open      → pre-cutoff, NEW BET enabled, countdown
+            //   closed    → cutoff passed, draw_at still ahead → CLOSED
+            //   awaiting  → draw_at passed, no result yet → still CLOSED
+            //   moves on  → result attached → next chronological slot
+            // The 6-hour lookback bounds stale orphan rows (e.g. a
+            // forgotten pre-settlement-pipeline draw row); anything
+            // older with no result is treated as abandoned.
+            $next = Draw::query()
+                ->where('game_id', $game->id)
+                ->where('status', 'scheduled')
+                ->whereDoesntHave('result')
+                ->where('draw_at', '>', now()->subHours(6))
+                ->orderBy('draw_at')
+                ->first(['id', 'draw_at', 'cutoff_at', 'status']);
 
             $betTypes = GameBetType::query()
                 ->where('game_id', $game->id)
