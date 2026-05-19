@@ -14,7 +14,7 @@ final class ResultsController extends Controller
     public function index(Request $request): Response
     {
         $from = now()->subDays(7)->startOfDay();
-        $to = now()->addDay()->endOfDay();
+        $to = now()->endOfDay();
 
         $draws = Draw::query()
             ->whereBetween('draw_at', [$from, $to])

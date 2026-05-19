@@ -1,7 +1,6 @@
-import { Link } from '@inertiajs/react';
-import { BookOpen, FolderGit2, LayoutGrid } from 'lucide-react';
+import { Link, usePage } from '@inertiajs/react';
+import { LayoutGrid, Settings, Trophy, Wallet } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
-import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
 import {
@@ -14,9 +13,36 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { lotto } from '@/routes';
+import { dashboard as adminDashboard } from '@/routes/admin';
+import { index as adminDrawsIndex } from '@/routes/admin/draws';
+import { edit as adminSettingsEdit } from '@/routes/admin/settings';
+import { create as adminWalletsCreate } from '@/routes/admin/wallets';
 import type { NavItem } from '@/types';
 
-const mainNavItems: NavItem[] = [
+const adminNavItems: NavItem[] = [
+    {
+        title: 'Dashboard',
+        href: adminDashboard(),
+        icon: LayoutGrid,
+    },
+    {
+        title: 'Draws',
+        href: adminDrawsIndex(),
+        icon: Trophy,
+    },
+    {
+        title: 'Wallets',
+        href: adminWalletsCreate(),
+        icon: Wallet,
+    },
+    {
+        title: 'Settings',
+        href: adminSettingsEdit(),
+        icon: Settings,
+    },
+];
+
+const playerNavItems: NavItem[] = [
     {
         title: 'Lotto',
         href: lotto(),
@@ -24,27 +50,21 @@ const mainNavItems: NavItem[] = [
     },
 ];
 
-const footerNavItems: NavItem[] = [
-    {
-        title: 'Repository',
-        href: 'https://github.com/laravel/react-starter-kit',
-        icon: FolderGit2,
-    },
-    {
-        title: 'Documentation',
-        href: 'https://laravel.com/docs/starter-kits#react',
-        icon: BookOpen,
-    },
-];
-
 export function AppSidebar() {
+    const { props } = usePage<{
+        auth?: { user?: { is_admin?: boolean } | null };
+    }>();
+    const isAdmin = props.auth?.user?.is_admin === true;
+    const items = isAdmin ? adminNavItems : playerNavItems;
+    const homeHref = isAdmin ? adminDashboard() : lotto();
+
     return (
         <Sidebar collapsible="icon" variant="inset">
             <SidebarHeader>
                 <SidebarMenu>
                     <SidebarMenuItem>
                         <SidebarMenuButton size="lg" asChild>
-                            <Link href={lotto()} prefetch>
+                            <Link href={homeHref} prefetch>
                                 <AppLogo />
                             </Link>
                         </SidebarMenuButton>
@@ -53,11 +73,10 @@ export function AppSidebar() {
             </SidebarHeader>
 
             <SidebarContent>
-                <NavMain items={mainNavItems} />
+                <NavMain items={items} />
             </SidebarContent>
 
             <SidebarFooter>
-                <NavFooter items={footerNavItems} className="mt-auto" />
                 <NavUser />
             </SidebarFooter>
         </Sidebar>
