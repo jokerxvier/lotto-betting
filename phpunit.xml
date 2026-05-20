@@ -35,5 +35,6 @@
         <env name="LOTTO_SCRAPER_SOURCE" value="lottopcso"/>
         <env name="LOTTO_SCRAPER_SOURCE_LABEL" value="lottopcso.com"/>
         <env name="LOTTO_SCRAPER_FETCHER" value="http"/>
+        <env name="LOTTO_HOME_WARM_UPCOMING" value="false"/>
     </php>
 </phpunit>

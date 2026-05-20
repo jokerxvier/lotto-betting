@@ -30,6 +30,21 @@ return [
 
     /*
     |---------------------------------------------------------------------------
+    | Home-page warm-up of the upcoming-draws window
+    |---------------------------------------------------------------------------
+    | The nightly `draws:generate-upcoming` cron is the canonical source for
+    | the 7-day window the ADVANCE bet sheet draws from. If the cron is mis-
+    | configured (e.g. Forge scheduler tab disabled) or skipped during a
+    | deploy outage, the window goes stale and players see fewer future
+    | draws than they should. When this flag is true, LottoHomeController
+    | calls EnsureDrawsForRangeAction lazily on home-page hits (idempotent,
+    | cached 15 minutes per Manila date) so the window self-heals. Disabled
+    | in `testing` so tests can set up explicit draw fixtures.
+    */
+    'home_warm_upcoming_window' => (bool) env('LOTTO_HOME_WARM_UPCOMING', true),
+
+    /*
+    |---------------------------------------------------------------------------
     | PCSO result scraper
     |---------------------------------------------------------------------------
     | Source selection + caching for the App\Services\PcsoResultScraper.

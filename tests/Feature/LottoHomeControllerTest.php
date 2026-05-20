@@ -27,6 +27,30 @@ it('lets a telegram-only account reach /lotto without forcing setup-pin', functi
     $this->get('/lotto')->assertOk();
 });
 
+it('self-heals the 7-day upcoming-draws window when the warm-up flag is on', function () {
+    // Opt into the home-page warm-up just for this test. Default in
+    // phpunit.xml is off so other tests can stage explicit fixtures.
+    config(['lotto.home_warm_upcoming_window' => true]);
+
+    $user = User::factory()->withWallet()->create();
+    $this->actingAs($user);
+
+    // No draws upfront — the warm-up should populate the window.
+    expect(Draw::query()->count())->toBe(0);
+
+    $this->get('/lotto')->assertOk();
+
+    // 2 active games × 7 days × 3 slots = 42.
+    expect(Draw::query()->count())->toBe(42);
+
+    // Idempotent: a second hit (within the 15-min cache window) is a
+    // no-op even if the cache flushed, because firstOrCreate keys on
+    // (game_id, draw_at).
+    Cache::flush();
+    $this->get('/lotto')->assertOk();
+    expect(Draw::query()->count())->toBe(42);
+});
+
 it('renders both game cards with empty result/next-draw when no draws exist', function () {
     $user = User::factory()->withWallet('500.00')->create();
     $this->actingAs($user);

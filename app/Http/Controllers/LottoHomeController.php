@@ -4,17 +4,21 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Actions\Draws\EnsureDrawsForRangeAction;
 use App\Models\Draw;
 use App\Models\Game;
 use App\Models\GameBetType;
-use Illuminate\Http\Request;
+use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 use Inertia\Response;
 
 final class LottoHomeController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(EnsureDrawsForRangeAction $ensureDraws): Response
     {
+        $this->warmUpcomingWindow($ensureDraws);
+
         $games = Game::query()
             ->where('active', true)
             ->orderBy('sort_order')
@@ -90,7 +94,7 @@ final class LottoHomeController extends Controller
                 'number_min' => $game->number_min,
                 'number_max' => $game->number_max,
                 'payout_label' => $target
-                    ? sprintf(
+                    ? \sprintf(
                         '₱%s bet wins ₱%s',
                         $this->formatPesoCompact($target->base_bet_amount),
                         $this->formatPesoCompact($target->base_payout_amount),
@@ -120,6 +124,42 @@ final class LottoHomeController extends Controller
     }
 
     /**
+     * Top up the 7-day window of scheduled draws if it has gone stale.
+     * The nightly `draws:generate-upcoming` cron is the canonical source,
+     * but if it didn't run (e.g. scheduler not configured on Forge yet,
+     * or a deploy outage clipped the run), the ADVANCE bottom sheet ends
+     * up with fewer rows than expected. Calling the idempotent
+     * EnsureDrawsForRangeAction here self-heals the window so the home
+     * card and ADVANCE list always have 7 days of slots.
+     *
+     * Cached to 15 minutes per Manila date so we don't pay even the
+     * firstOrCreate lookup cost on every home-page render. The Manila
+     * date in the cache key guarantees a midnight rollover triggers a
+     * fresh top-up within the cache TTL window.
+     */
+    private function warmUpcomingWindow(EnsureDrawsForRangeAction $ensure): void
+    {
+        // Off by default in `testing` (see phpunit.xml) so tests can set up
+        // explicit draw fixtures without 21 extra slots landing on top.
+        if (! config('lotto.home_warm_upcoming_window')) {
+            return;
+        }
+
+        $today = CarbonImmutable::now('Asia/Manila')->startOfDay();
+        $cacheKey = 'lotto:upcoming-window:warm:'.$today->format('Y-m-d');
+
+        Cache::remember(
+            $cacheKey,
+            now()->addMinutes(15),
+            function () use ($ensure, $today): bool {
+                $ensure->execute($today, $today->addDays(6));
+
+                return true;
+            },
+        );
+    }
+
+    /**
      * "10.00" → "10", "10.50" → "10.50", "5500.00" → "5,500".
      * Drops the decimal part only when the amount is a whole number.
      */
@@ -138,11 +178,16 @@ final class LottoHomeController extends Controller
      */
     private function slotLabel(int $hour): string
     {
+        // `g\A` in the PHP date() format = lowercase hour (g) + literal "A"
+        // + uppercase AM/PM (A). The backslashes escape the A character
+        // so it isn't read as the AM/PM placeholder twice. Linters that
+        // assume PHP::class style on backslash-prefixed identifiers
+        // misread this, hence the explicit \date() in global namespace.
         return match ($hour) {
             14 => '2PM',
             17 => '5PM',
             21 => '9PM',
-            default => date('g\\A', mktime($hour, 0, 0)),
+            default => \date('g\\A', (int) \mktime($hour, 0, 0)),
         };
     }
 }
