@@ -1,5 +1,5 @@
 import { Clock } from 'lucide-react';
-import type { PropsWithChildren } from 'react';
+import { useState, type PropsWithChildren } from 'react';
 import { Button } from '@/components/ui/button';
 import {
     Sheet,
@@ -22,8 +22,9 @@ type Props = PropsWithChildren<{
     /** List sorted ascending by cutoff_at. */
     draws: UpcomingDraw[];
     /**
-     * Called with the picked draw. Caller is responsible for closing this
-     * sheet and opening the bet wizard bound to that draw.
+     * Called with the picked draw. The sheet auto-closes before the
+     * callback runs so the bet wizard the caller opens lands as the
+     * only foreground sheet (no overlapping bottom sheets).
      */
     onPick: (draw: UpcomingDraw) => void;
 }>;
@@ -43,12 +44,23 @@ export default function SelectDrawSheet({
     onPick,
     children,
 }: Props) {
+    const [open, setOpen] = useState(false);
+
     if (draws.length === 0) {
         return <>{children}</>;
     }
 
+    const handlePick = (d: UpcomingDraw) => {
+        // Close the picker before handing off to the caller's bet wizard.
+        // Otherwise the caller's BetSheet opens on top of this one, and
+        // when the player finishes the bet only the BetSheet closes —
+        // the picker stays mounted and the player has to dismiss it.
+        setOpen(false);
+        onPick(d);
+    };
+
     return (
-        <Sheet>
+        <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>{children}</SheetTrigger>
             <SheetContent
                 side="bottom"
@@ -71,7 +83,7 @@ export default function SelectDrawSheet({
                                     type="button"
                                     size="lg"
                                     className="w-full justify-between font-semibold tracking-wide uppercase"
-                                    onClick={() => onPick(d)}
+                                    onClick={() => handlePick(d)}
                                 >
                                     <span className="flex items-center gap-2">
                                         <Clock className="size-4 opacity-80" />
