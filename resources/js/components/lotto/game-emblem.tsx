@@ -1,3 +1,4 @@
+import { Icon2D, Icon3D } from '@/components/lotto/game-icons';
 import { cn } from '@/lib/utils';
 
 type Size = 'sm' | 'md' | 'lg';
@@ -9,10 +10,10 @@ type Props = {
 };
 
 /**
- * Game code → token-colored badge. Uses the --game-2d / --game-3d / --game-4d
- * / --game-6d tokens from app.css so 2D reads as red, 3D as purple, etc.
- * Unknown codes fall back to --primary. The subtle radial highlight matches
- * the LottoBall language so emblem + balls feel like one family.
+ * Game code → emblem. For branded games (2D / 3D) we render the Ez Swerte
+ * SVG artwork — square card with the code and decorative number balls
+ * baked in. Unknown codes fall back to a token-colored text badge using
+ * the --game-2d / --game-3d / --game-4d / --game-6d tokens from app.css.
  */
 function bgClass(code: string): string {
     switch (code.toLowerCase()) {
@@ -30,6 +31,25 @@ function bgClass(code: string): string {
 }
 
 export default function GameEmblem({ code, size = 'md', className }: Props) {
+    // The branded SVG carries its own rounded background card, so for known
+    // codes we drop the tinted wrapper and let the artwork breathe edge-to-edge.
+    const iconClass = cn(
+        'shrink-0',
+        size === 'sm' && 'size-9',
+        size === 'md' && 'size-12',
+        size === 'lg' && 'size-14',
+        className,
+    );
+
+    switch (code.toLowerCase()) {
+        case '2d':
+        case 'ez2':
+            return <Icon2D className={iconClass} />;
+        case '3d':
+        case 'swertres':
+            return <Icon3D className={iconClass} />;
+    }
+
     return (
         <div
             className={cn(
