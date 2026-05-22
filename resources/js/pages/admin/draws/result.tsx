@@ -175,10 +175,7 @@ export default function AdminDrawResult({
                                 <CardContent className="space-y-4">
                                     <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
                                         {picks.map((p, i) => (
-                                            <div
-                                                key={i}
-                                                className="space-y-1"
-                                            >
+                                            <div key={i} className="space-y-1">
                                                 <Label
                                                     htmlFor={`pick-${i}`}
                                                     className="text-[0.6rem] font-bold tracking-wider text-muted-foreground uppercase"
@@ -212,9 +209,7 @@ export default function AdminDrawResult({
                                             </div>
                                         ))}
                                     </div>
-                                    <InputError
-                                        message={errors.numbers}
-                                    />
+                                    <InputError message={errors.numbers} />
 
                                     {allFilled && (
                                         <div className="rounded-lg border border-border bg-muted/30 p-4">
@@ -245,8 +240,7 @@ export default function AdminDrawResult({
                                         Real money.
                                     </span>{' '}
                                     Publishing immediately settles all pending
-                                    bets and credits winners. There is no
-                                    undo.
+                                    bets and credits winners. There is no undo.
                                 </p>
                             </div>
 
@@ -256,9 +250,7 @@ export default function AdminDrawResult({
                                 disabled={!allFilled || processing}
                                 className="w-full uppercase"
                             >
-                                {processing && (
-                                    <Spinner className="mr-2" />
-                                )}
+                                {processing && <Spinner className="mr-2" />}
                                 Publish & settle
                             </Button>
                         </>

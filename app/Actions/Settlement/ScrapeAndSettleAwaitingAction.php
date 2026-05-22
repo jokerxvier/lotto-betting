@@ -27,6 +27,13 @@ use Throwable;
  *    double-credit.
  *  - Every settle and every skip writes an `audit` log line.
  *
+ * Two execution paths inside the loop:
+ *  - Path A — no result attached: scrape PCSO, range-validate numbers,
+ *    write DrawResult, run SettleDrawAction.
+ *  - Path B — result already attached (the slot-aligned
+ *    `draws:backfill-results` cron writes results without settling):
+ *    re-validate the persisted numbers and run SettleDrawAction only.
+ *
  * Returns a summary the caller can render to the user (CLI prints lines;
  * controller flashes a count). Skipped draws keep their original
  * unsettled state so the next tick / click can retry.
@@ -49,8 +56,7 @@ final class ScrapeAndSettleAwaitingAction
         $query = Draw::query()
             ->where('status', '!=', 'settled')
             ->where('draw_at', '<=', now())
-            ->whereDoesntHave('result')
-            ->with('game');
+            ->with(['game', 'result']);
 
         if ($onlyDrawId !== null) {
             $query->where('id', $onlyDrawId);
@@ -65,72 +71,25 @@ final class ScrapeAndSettleAwaitingAction
         $lines = [];
 
         foreach ($awaiting as $draw) {
-            $numbers = $this->scraper->fetchLatest($draw->game->code, $draw->draw_at);
-
-            if ($numbers === null) {
-                $this->logSkip($draw, 'scraper_returned_null');
-                $skippedCount++;
+            if ($draw->result !== null) {
+                $this->settleAttachedResult(
+                    $draw,
+                    $lines,
+                    $settledCount,
+                    $skippedCount,
+                    $totalPayoutCents,
+                );
 
                 continue;
             }
 
-            if (! $this->numbersAreValid($numbers, $draw)) {
-                $this->logSkip($draw, 'numbers_out_of_range_or_wrong_count');
-                $skippedCount++;
-
-                continue;
-            }
-
-            try {
-                $result = DB::transaction(
-                    function () use ($draw, $numbers) {
-                        DrawResult::query()->create([
-                            'draw_id' => $draw->id,
-                            'numbers' => $numbers,
-                            'published_at' => now(),
-                        ]);
-
-                        return $this->settle->execute($draw->fresh());
-                    },
-                    attempts: 3,
-                );
-
-                Log::channel('audit')->info('draw.auto_settled', [
-                    'draw_id' => $result->drawId,
-                    'game_id' => $draw->game_id,
-                    'numbers' => $numbers,
-                    'settled_count' => $result->settledCount,
-                    'won_count' => $result->wonCount,
-                    'total_payout' => $result->totalPayout,
-                ]);
-
-                $lines[] = sprintf(
-                    'Draw #%d (%s) settled — %d bet(s), %d winner(s), ₱%s paid out.',
-                    $result->drawId,
-                    $draw->game->code,
-                    $result->settledCount,
-                    $result->wonCount,
-                    $result->totalPayout,
-                );
-
-                $settledCount++;
-                $totalPayoutCents += (int) round(((float) $result->totalPayout) * 100);
-            } catch (DrawAlreadySettledException) {
-                // Race: another worker beat us to it. Safe; just skip.
-                $this->logSkip($draw, 'already_settled');
-                $skippedCount++;
-            } catch (DrawNotReadyException $e) {
-                // Impossible — we just wrote the result. Log + skip.
-                $this->logSkip($draw, 'unexpected_not_ready:'.$e->getMessage());
-                $skippedCount++;
-            } catch (Throwable $e) {
-                Log::channel('audit')->warning('draw.auto_settle.failure', [
-                    'draw_id' => $draw->id,
-                    'reason' => $e->getMessage(),
-                ]);
-                $lines[] = "Draw #{$draw->id} failed: {$e->getMessage()}";
-                $skippedCount++;
-            }
+            $this->scrapeAndSettle(
+                $draw,
+                $lines,
+                $settledCount,
+                $skippedCount,
+                $totalPayoutCents,
+            );
         }
 
         return [
@@ -139,6 +98,168 @@ final class ScrapeAndSettleAwaitingAction
             'total_payout' => number_format($totalPayoutCents / 100, 2, '.', ''),
             'lines' => $lines,
         ];
+    }
+
+    /**
+     * Path A: no `DrawResult` yet. Scrape PCSO, validate, write the
+     * result row, settle bets — all inside one transaction so a partial
+     * failure doesn't leave a result without settled bets.
+     *
+     * @param  list<string>  $lines
+     */
+    private function scrapeAndSettle(
+        Draw $draw,
+        array &$lines,
+        int &$settledCount,
+        int &$skippedCount,
+        int &$totalPayoutCents,
+    ): void {
+        $numbers = $this->scraper->fetchLatest($draw->game->code, $draw->draw_at);
+
+        if ($numbers === null) {
+            $this->logSkip($draw, 'scraper_returned_null');
+            $skippedCount++;
+
+            return;
+        }
+
+        if (! $this->numbersAreValid($numbers, $draw)) {
+            $this->logSkip($draw, 'numbers_out_of_range_or_wrong_count');
+            $skippedCount++;
+
+            return;
+        }
+
+        try {
+            $result = DB::transaction(
+                function () use ($draw, $numbers) {
+                    DrawResult::query()->create([
+                        'draw_id' => $draw->id,
+                        'numbers' => $numbers,
+                        'published_at' => now(),
+                    ]);
+
+                    return $this->settle->execute($draw->fresh());
+                },
+                attempts: 3,
+            );
+
+            $this->recordSettled(
+                $result,
+                $draw,
+                $numbers,
+                $lines,
+                $settledCount,
+                $totalPayoutCents,
+            );
+        } catch (DrawAlreadySettledException) {
+            $this->logSkip($draw, 'already_settled');
+            $skippedCount++;
+        } catch (DrawNotReadyException $e) {
+            $this->logSkip($draw, 'unexpected_not_ready:'.$e->getMessage());
+            $skippedCount++;
+        } catch (Throwable $e) {
+            $this->logFailure($draw, $e, $lines);
+            $skippedCount++;
+        }
+    }
+
+    /**
+     * Path B: a `DrawResult` is already attached (typically the
+     * slot-aligned `draws:backfill-results` cron wrote it earlier).
+     * Re-validate the persisted numbers — a corrupt or out-of-range
+     * result must not slip through to bet settlement — then run
+     * `SettleDrawAction` only. No scraper call.
+     *
+     * @param  list<string>  $lines
+     */
+    private function settleAttachedResult(
+        Draw $draw,
+        array &$lines,
+        int &$settledCount,
+        int &$skippedCount,
+        int &$totalPayoutCents,
+    ): void {
+        /** @var list<int> $numbers */
+        $numbers = $draw->result->numbers;
+
+        if (! $this->numbersAreValid($numbers, $draw)) {
+            $this->logSkip($draw, 'attached_numbers_out_of_range_or_wrong_count');
+            $skippedCount++;
+
+            return;
+        }
+
+        try {
+            $result = DB::transaction(
+                fn () => $this->settle->execute($draw->fresh()),
+                attempts: 3,
+            );
+
+            $this->recordSettled(
+                $result,
+                $draw,
+                $numbers,
+                $lines,
+                $settledCount,
+                $totalPayoutCents,
+            );
+        } catch (DrawAlreadySettledException) {
+            $this->logSkip($draw, 'already_settled');
+            $skippedCount++;
+        } catch (DrawNotReadyException $e) {
+            $this->logSkip($draw, 'unexpected_not_ready:'.$e->getMessage());
+            $skippedCount++;
+        } catch (Throwable $e) {
+            $this->logFailure($draw, $e, $lines);
+            $skippedCount++;
+        }
+    }
+
+    /**
+     * @param  list<int>  $numbers
+     * @param  list<string>  $lines
+     */
+    private function recordSettled(
+        SettleResult $result,
+        Draw $draw,
+        array $numbers,
+        array &$lines,
+        int &$settledCount,
+        int &$totalPayoutCents,
+    ): void {
+        Log::channel('audit')->info('draw.auto_settled', [
+            'draw_id' => $result->drawId,
+            'game_id' => $draw->game_id,
+            'numbers' => $numbers,
+            'settled_count' => $result->settledCount,
+            'won_count' => $result->wonCount,
+            'total_payout' => $result->totalPayout,
+        ]);
+
+        $lines[] = sprintf(
+            'Draw #%d (%s) settled — %d bet(s), %d winner(s), ₱%s paid out.',
+            $result->drawId,
+            $draw->game->code,
+            $result->settledCount,
+            $result->wonCount,
+            $result->totalPayout,
+        );
+
+        $settledCount++;
+        $totalPayoutCents += (int) round(((float) $result->totalPayout) * 100);
+    }
+
+    /**
+     * @param  list<string>  $lines
+     */
+    private function logFailure(Draw $draw, Throwable $e, array &$lines): void
+    {
+        Log::channel('audit')->warning('draw.auto_settle.failure', [
+            'draw_id' => $draw->id,
+            'reason' => $e->getMessage(),
+        ]);
+        $lines[] = "Draw #{$draw->id} failed: {$e->getMessage()}";
     }
 
     /**

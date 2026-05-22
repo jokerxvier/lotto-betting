@@ -72,9 +72,7 @@ export default function WalletIndex({ wallet, transactions }: Props) {
             <Head title="Wallet" />
             <div className="space-y-5 p-4">
                 <header className="space-y-0.5">
-                    <h1 className="text-xl font-bold tracking-tight">
-                        Wallet
-                    </h1>
+                    <h1 className="text-xl font-bold tracking-tight">Wallet</h1>
                     <p className="text-sm text-muted-foreground">
                         Your balance and recent activity.
                     </p>
@@ -145,7 +143,7 @@ export default function WalletIndex({ wallet, transactions }: Props) {
                                     <li
                                         key={tx.id}
                                         className={cn(
-                                            'flex items-center gap-3 rounded-xl border border-border border-l-4 bg-card p-3',
+                                            'flex items-center gap-3 rounded-xl border border-l-4 border-border bg-card p-3',
                                             isCredit
                                                 ? 'border-l-success'
                                                 : 'border-l-destructive/70',
@@ -162,7 +160,7 @@ export default function WalletIndex({ wallet, transactions }: Props) {
                                             <Icon className="size-4" />
                                         </div>
                                         <div className="min-w-0 flex-1">
-                                            <p className="text-sm font-bold leading-tight">
+                                            <p className="text-sm leading-tight font-bold">
                                                 {meta.label}
                                             </p>
                                             <p className="text-[0.7rem] text-muted-foreground">

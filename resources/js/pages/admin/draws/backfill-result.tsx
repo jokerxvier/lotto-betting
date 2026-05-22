@@ -140,7 +140,11 @@ export default function BackfillResult({
                         title="Backfill results"
                         description={`Parsed ${total} draw${total === 1 ? '' : 's'} from ${source_label} between ${from} and ${to}. No bets were settled.${seededClause}`}
                     />
-                    <Button asChild variant="outline" className="w-full md:w-auto">
+                    <Button
+                        asChild
+                        variant="outline"
+                        className="w-full md:w-auto"
+                    >
                         <Link href="/admin/draws">
                             <ArrowLeft className="mr-2 size-4" />
                             Back to draws
@@ -182,8 +186,8 @@ export default function BackfillResult({
                                 not overwritten.
                             </p>
                             <p className="text-xs text-warning/80">
-                                Backfill refuses to change numbers on draws
-                                that already paid out — manual ledger reversal
+                                Backfill refuses to change numbers on draws that
+                                already paid out — manual ledger reversal
                                 required first.
                             </p>
                         </div>
@@ -202,10 +206,7 @@ export default function BackfillResult({
                             <li key={row.draw_id}>
                                 <Card>
                                     <CardHeader className="flex flex-row items-center gap-3 space-y-0 pb-3">
-                                        <GameEmblem
-                                            code={row.game}
-                                            size="sm"
-                                        />
+                                        <GameEmblem code={row.game} size="sm" />
                                         <div className="min-w-0 flex-1">
                                             <CardTitle className="text-sm">
                                                 {row.game.toUpperCase()} ·{' '}
@@ -236,9 +237,9 @@ export default function BackfillResult({
                                                 ))}
                                             </div>
                                         ) : (
-                                            <p className="text-xs italic text-muted-foreground">
-                                                Scraper returned no numbers
-                                                for this slot.
+                                            <p className="text-xs text-muted-foreground italic">
+                                                Scraper returned no numbers for
+                                                this slot.
                                             </p>
                                         )}
                                         {row.prev_numbers &&

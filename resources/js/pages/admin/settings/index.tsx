@@ -118,13 +118,12 @@ export default function AdminSettings({ settings, source_label }: Props) {
                                 PCSO suggestions
                             </CardTitle>
                             <CardDescription>
-                                Pre-fill the publish form with numbers
-                                scraped from{' '}
+                                Pre-fill the publish form with numbers scraped
+                                from{' '}
                                 <span className="font-mono">
                                     {source_label}
                                 </span>
-                                . You still confirm before any bet is
-                                settled.
+                                . You still confirm before any bet is settled.
                             </CardDescription>
                         </div>
                         <label
@@ -159,8 +158,8 @@ export default function AdminSettings({ settings, source_label }: Props) {
                             </CardTitle>
                             <CardDescription>
                                 Settle bets automatically when results are
-                                scraped — no admin review. Off by default.
-                                Runs every 5 minutes via cron when on.
+                                scraped — no admin review. Off by default. Runs
+                                every 5 minutes via cron when on.
                             </CardDescription>
                         </div>
                         <label
@@ -258,11 +257,9 @@ export default function AdminSettings({ settings, source_label }: Props) {
                         <Input
                             id="confirm-token"
                             value={confirmText}
-                            onChange={(e) =>
-                                setConfirmText(e.target.value)
-                            }
+                            onChange={(e) => setConfirmText(e.target.value)}
                             placeholder={CONFIRM_TOKEN}
-                            className="font-mono uppercase tracking-wider"
+                            className="font-mono tracking-wider uppercase"
                             autoFocus
                         />
                     </div>
